@@ -9,8 +9,8 @@ local database.
 
 - React 19 + TypeScript, Vite 8, Tailwind CSS 4 (class-based dark mode), React Router 8, lucide-react
 - Hebrew / English UI with a small in-house translation layer (no i18n library); all seed questions and answers are bilingual
-- API: Express 5 on Node 24 using the built-in `node:sqlite` (no native modules to compile),
-  scrypt password hashing, httpOnly cookie sessions
+- API: Express 5 on Node 24; database through `@libsql/client` (a local SQLite file in development,
+  Turso when hosted on Vercel); scrypt password hashing, httpOnly cookie sessions
 - Optional: the Claude API for the "more questions in this interview's style" helper
 
 ## Scripts
@@ -26,7 +26,6 @@ npm run lint      # run oxlint
 ```
 
 In development Vite proxies `/api` to the API, so the browser only ever talks to port 5173.
-Node prints one `ExperimentalWarning` for `node:sqlite` on start; it is harmless.
 
 ## Using it on a phone or tablet
 
@@ -45,29 +44,45 @@ The UI is responsive and installable. Two ways to reach it from an iPhone / iPad
 
 ## Deploying
 
-The whole app is one Node process: `npm run build` produces `dist/`, and `npm start`
-(`node server/index.ts`) serves it together with the API on one port, with the SQLite file in
-`server/data/`. A `Dockerfile` does exactly that, so any host that runs a container or a Node
-app works. The only requirement is a **persistent disk** mounted at `/app/server/data` (or
-`PREPFLOW_DB` pointing into one), otherwise the database is lost on every deploy.
+The app is one Express server plus a built front end, and the database is SQLite-compatible
+(libSQL). Two ways to host it; both update with `git push` and keep the data.
 
-Recommended path, once, in this order:
+### Vercel + Turso (free tiers, recommended)
 
-1. Put the project in a **GitHub** repository (`git init`, commit, push). Every later change is
-   then `git push` and the host redeploys itself.
-2. Create a service on **Railway** (or Fly.io / Render): "deploy from GitHub", it detects the
-   Dockerfile. Add a volume mounted at `/app/server/data`. Set environment variables:
-   `ANTHROPIC_API_KEY` (optional, for the AI helper), `PORT` if the host asks for one.
-3. Open the HTTPS address the host gives you, register (the first account is the admin), and
-   add it to the phone's home screen.
+Vercel runs the API as a serverless function (`api/index.ts` hands it the same Express app) and
+serves `dist/` as static files (`vercel.json`). Serverless functions have no disk, so the
+database lives in **Turso** (hosted libSQL); locally the very same client reads the SQLite file.
+
+1. Push the repository to **GitHub**.
+2. **Turso**: create a database (`turso db create prepflow` or the website), copy its URL
+   (`libsql://...turso.io`) and create an auth token.
+3. **Vercel**: "Add New Project" → import the GitHub repo. Vercel reads `vercel.json`. Under
+   *Environment Variables* add `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` and, optionally,
+   `ANTHROPIC_API_KEY`. Deploy.
+4. Open the `https://...vercel.app` address, register (the first account is the admin) and add
+   it to the phone's home screen. Every later `git push` to `main` redeploys.
+
+Limits that matter: the Hobby plan is for personal, non-commercial use; functions run up to 60 s
+(set in `vercel.json`), enough for the AI helper. The first request after a quiet period takes
+about a second (cold start).
+
+### Docker host with a disk (Railway, Fly.io, Render, a VPS)
+
+`npm run build` produces `dist/`, and `npm start` (`node server/index.ts`) serves it together
+with the API on one port, with the SQLite file in `server/data/`. The `Dockerfile` does exactly
+that; mount a **persistent disk** at `/app/server/data` (or point `PREPFLOW_DB` into one),
+otherwise the database is lost on every deploy. Deploy from GitHub, add the volume, set
+`ANTHROPIC_API_KEY` if wanted. Costs a few dollars a month; no code changes, no second service.
 
 Updates never need a fresh database: tables are created with `CREATE TABLE IF NOT EXISTS` and the
-per-user documents are JSON, so new fields are additive. Back up by copying `prepflow.db`.
+per-user documents are JSON, so new fields are additive. Back up by copying `prepflow.db` (or with
+`turso db shell` / the Turso dashboard when hosted).
 
 ## Accounts and data
 
-- The database is created on first run at `server/data/prepflow.db` (override the path with
-  the `PREPFLOW_DB` environment variable). The folder is git-ignored. Delete the file to start clean.
+- Locally the database is created on first run at `server/data/prepflow.db` (override the path with
+  `PREPFLOW_DB`); the folder is git-ignored, delete the file to start clean. When `TURSO_DATABASE_URL`
+  is set, the same code talks to Turso instead.
 - The **first account registered becomes `admin`**; every later account is a regular `user`.
   Admins get an `/admin` page listing every account and what it has saved.
 - Sessions are a random token in the httpOnly cookie `prepflow_session`, valid for 30 days,
@@ -207,9 +222,12 @@ with an error `code` the UI translates.
 ## Structure
 
 ```
+api/
+  index.ts      Vercel entry point: exports the Express app as a serverless function
 server/
-  index.ts      Express app, loads .env, mounts the /api router, 404 + error handling
-  db.ts         opens the SQLite file, creates the tables
+  index.ts      long-lived entry: loads .env, waits for the schema, listens
+  app.ts        the Express app (API router, static front end, errors), shared with api/index.ts
+  db.ts         libSQL client (local file or Turso), schema, small async query helpers
   auth.ts       password hashing, sessions, requireUser / requireAdmin middleware
   routes.ts     every endpoint with input validation
   ai.ts         the AI helper: prompt, Claude API call, parsing (needs ANTHROPIC_API_KEY)

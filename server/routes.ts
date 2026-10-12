@@ -19,6 +19,7 @@ import {
   type RatingEvent,
   type TargetInterview,
 } from '../src/types/index.ts'
+import { AiNotConfiguredError, generateQuestions, type GenerateInput } from './ai.ts'
 import {
   clearSessionCookie,
   createSession,
@@ -35,8 +36,7 @@ import {
   verifyPassword,
   type UserRow,
 } from './auth.ts'
-import { AiNotConfiguredError, generateQuestions, type GenerateInput } from './ai.ts'
-import { db, nowIso, parseDocument } from './db.ts'
+import { all, get, nowIso, parseDocument, run } from './db.ts'
 
 export const router = Router()
 
@@ -44,6 +44,7 @@ export const router = Router()
 
 type Body = Record<string, unknown>
 type DocumentRow = { id: string; data: string }
+type DocumentTable = 'cards' | 'targets' | 'interviews' | 'questions'
 
 function body(req: Request): Body {
   return req.body && typeof req.body === 'object' ? (req.body as Body) : {}
@@ -78,27 +79,26 @@ function notFound(res: Response) {
 }
 
 /** One row of a per-user document table, or undefined when it is not this user's. */
-function ownedRow(table: 'cards' | 'targets' | 'interviews' | 'questions', id: unknown, userId: string): DocumentRow | undefined {
-  return db.prepare(`SELECT id, data FROM ${table} WHERE id = ? AND user_id = ?`).get(String(id), userId) as DocumentRow | undefined
+function ownedRow(table: DocumentTable, id: unknown, userId: string): Promise<DocumentRow | undefined> {
+  return get<DocumentRow>(`SELECT id, data FROM ${table} WHERE id = ? AND user_id = ?`, [String(id), userId])
 }
 
-function insertDocument(table: 'cards' | 'targets' | 'interviews' | 'questions', userId: string, document: { id: string }) {
-  db.prepare(`INSERT INTO ${table} (id, user_id, data, created_at) VALUES (?, ?, ?, ?)`).run(
+function insertDocument(table: DocumentTable, userId: string, document: { id: string }): Promise<void> {
+  return run(`INSERT INTO ${table} (id, user_id, data, created_at) VALUES (?, ?, ?, ?)`, [
     document.id,
     userId,
     JSON.stringify(document),
     nowIso(),
-  )
+  ])
 }
 
-function updateDocument<T extends { id: string }>(table: 'cards' | 'targets' | 'interviews' | 'questions', document: T) {
-  db.prepare(`UPDATE ${table} SET data = ? WHERE id = ?`).run(JSON.stringify(document), document.id)
+function updateDocument<T extends { id: string }>(table: DocumentTable, document: T): Promise<void> {
+  return run(`UPDATE ${table} SET data = ? WHERE id = ?`, [JSON.stringify(document), document.id])
 }
 
-function listDocuments<T extends { id: string }>(table: 'cards' | 'targets' | 'interviews' | 'questions', userId: string): T[] {
-  return (db.prepare(`SELECT id, data FROM ${table} WHERE user_id = ? ORDER BY created_at`).all(userId) as unknown as DocumentRow[]).map(
-    (row) => parseDocument<T>(row),
-  )
+async function listDocuments<T extends { id: string }>(table: DocumentTable, userId: string): Promise<T[]> {
+  const rows = await all<DocumentRow>(`SELECT id, data FROM ${table} WHERE user_id = ? ORDER BY created_at`, [userId])
+  return rows.map((row) => parseDocument<T>(row))
 }
 
 function defaultSettings(): AccountSettings {
@@ -119,7 +119,7 @@ function parsePrefs(value: unknown): PracticePreferences {
 
 // ---------- Auth ----------
 
-router.post('/auth/register', (req, res) => {
+router.post('/auth/register', async (req, res) => {
   const { email, name, password } = body(req)
   const cleanEmail = typeof email === 'string' ? email.trim().toLowerCase() : ''
   const cleanName = text(name, 80)
@@ -127,14 +127,14 @@ router.post('/auth/register', (req, res) => {
   if (!cleanName) return bad(res, 'invalid_name')
   if (typeof password !== 'string' || password.length < 8) return bad(res, 'weak_password')
 
-  const exists = db.prepare('SELECT 1 FROM users WHERE email = ?').get(cleanEmail)
+  const exists = await get('SELECT 1 AS one FROM users WHERE email = ?', [cleanEmail])
   if (exists) {
     res.status(409).json({ error: 'email_taken' })
     return
   }
 
   // The very first account becomes the admin; everyone after is a regular user.
-  const count = (db.prepare('SELECT COUNT(*) AS n FROM users').get() as { n: number }).n
+  const count = (await get<{ n: number }>('SELECT COUNT(*) AS n FROM users'))?.n ?? 0
   const row: UserRow = {
     id: randomUUID(),
     email: cleanEmail,
@@ -143,43 +143,43 @@ router.post('/auth/register', (req, res) => {
     role: count === 0 ? 'admin' : 'user',
     created_at: nowIso(),
   }
-  db.prepare('INSERT INTO users (id, email, name, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(
+  await run('INSERT INTO users (id, email, name, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?, ?)', [
     row.id,
     row.email,
     row.name,
     row.password_hash,
     row.role,
     row.created_at,
-  )
-  db.prepare('INSERT INTO settings (user_id, data) VALUES (?, ?)').run(row.id, JSON.stringify(defaultSettings()))
+  ])
+  await run('INSERT INTO settings (user_id, data) VALUES (?, ?)', [row.id, JSON.stringify(defaultSettings())])
 
-  const session = createSession(row.id)
+  const session = await createSession(row.id)
   setSessionCookie(res, session.token, session.expiresAt)
   res.status(201).json({ user: toPublicUser(row) })
 })
 
-router.post('/auth/login', (req, res) => {
+router.post('/auth/login', async (req, res) => {
   const { email, password } = body(req)
   const cleanEmail = typeof email === 'string' ? email.trim().toLowerCase() : ''
-  const row = db.prepare('SELECT * FROM users WHERE email = ?').get(cleanEmail) as UserRow | undefined
+  const row = await get<UserRow>('SELECT * FROM users WHERE email = ?', [cleanEmail])
   if (!row || typeof password !== 'string' || !verifyPassword(password, row.password_hash)) {
     res.status(401).json({ error: 'invalid_credentials' })
     return
   }
-  const session = createSession(row.id)
+  const session = await createSession(row.id)
   setSessionCookie(res, session.token, session.expiresAt)
   res.json({ user: toPublicUser(row) })
 })
 
-router.post('/auth/logout', (req, res) => {
+router.post('/auth/logout', async (req, res) => {
   const token = readCookie(req, SESSION_COOKIE)
-  if (token) deleteSession(token)
+  if (token) await deleteSession(token)
   clearSessionCookie(res)
   res.status(204).end()
 })
 
-router.get('/auth/me', (req, res) => {
-  const user = userFromRequest(req)
+router.get('/auth/me', async (req, res) => {
+  const user = await userFromRequest(req)
   if (!user) {
     res.status(401).json({ error: 'unauthenticated' })
     return
@@ -191,8 +191,8 @@ router.get('/auth/me', (req, res) => {
 
 router.use('/me', requireUser)
 
-function loadAccount(userId: string) {
-  const settingsRow = db.prepare('SELECT data FROM settings WHERE user_id = ?').get(userId) as { data: string } | undefined
+async function loadAccount(userId: string) {
+  const settingsRow = await get<{ data: string }>('SELECT data FROM settings WHERE user_id = ?', [userId])
   // Settings saved by an older version may lack newer fields; the defaults fill them in.
   const settings: AccountSettings = {
     ...defaultSettings(),
@@ -200,75 +200,73 @@ function loadAccount(userId: string) {
   }
 
   const notes: Record<string, string> = {}
-  for (const row of db.prepare('SELECT question_id, text FROM notes WHERE user_id = ?').all(userId) as unknown as {
-    question_id: string
-    text: string
-  }[]) {
+  for (const row of await all<{ question_id: string; text: string }>('SELECT question_id, text FROM notes WHERE user_id = ?', [
+    userId,
+  ])) {
     notes[row.question_id] = row.text
   }
 
   const ratings = (
-    db.prepare('SELECT question_id, rating, at FROM ratings WHERE user_id = ? ORDER BY id').all(userId) as unknown as {
-      question_id: string
-      rating: RatingEvent['rating']
-      at: string
-    }[]
+    await all<{ question_id: string; rating: RatingEvent['rating']; at: string }>(
+      'SELECT question_id, rating, at FROM ratings WHERE user_id = ? ORDER BY id',
+      [userId],
+    )
   ).map((row) => ({ questionId: row.question_id, rating: row.rating, at: row.at }))
 
-  return {
-    settings,
-    notes,
-    ratings,
-    cards: listDocuments<Flashcard>('cards', userId),
-    targets: listDocuments<TargetInterview>('targets', userId),
-    interviews: listDocuments<Interview>('interviews', userId),
-    questions: listDocuments<Question>('questions', userId),
-  }
+  const [cards, targets, interviews, questions] = await Promise.all([
+    listDocuments<Flashcard>('cards', userId),
+    listDocuments<TargetInterview>('targets', userId),
+    listDocuments<Interview>('interviews', userId),
+    listDocuments<Question>('questions', userId),
+  ])
+
+  return { settings, notes, ratings, cards, targets, interviews, questions }
 }
 
-router.get('/me/data', (_req, res) => {
-  res.json(loadAccount(currentUser(res).id))
+router.get('/me/data', async (_req, res) => {
+  res.json(await loadAccount(currentUser(res).id))
 })
 
-router.put('/me/settings', (req, res) => {
+router.put('/me/settings', async (req, res) => {
   const { roleId, practicePrefs, showSamples } = body(req)
   const settings: AccountSettings = {
     roleId: typeof roleId === 'string' ? roleId : null,
     practicePrefs: parsePrefs(practicePrefs),
     showSamples: showSamples !== false,
   }
-  db.prepare('INSERT INTO settings (user_id, data) VALUES (?, ?) ON CONFLICT(user_id) DO UPDATE SET data = excluded.data').run(
+  await run('INSERT INTO settings (user_id, data) VALUES (?, ?) ON CONFLICT(user_id) DO UPDATE SET data = excluded.data', [
     currentUser(res).id,
     JSON.stringify(settings),
-  )
+  ])
   res.json(settings)
 })
 
-router.put('/me/notes/:questionId', (req, res) => {
+router.put('/me/notes/:questionId', async (req, res) => {
   const questionId = String(req.params.questionId)
   const note = optionalText(body(req).text, 5000)
   if (note.trim()) {
-    db.prepare(
+    await run(
       `INSERT INTO notes (user_id, question_id, text, updated_at) VALUES (?, ?, ?, ?)
        ON CONFLICT(user_id, question_id) DO UPDATE SET text = excluded.text, updated_at = excluded.updated_at`,
-    ).run(currentUser(res).id, questionId, note, nowIso())
+      [currentUser(res).id, questionId, note, nowIso()],
+    )
   } else {
-    db.prepare('DELETE FROM notes WHERE user_id = ? AND question_id = ?').run(currentUser(res).id, questionId)
+    await run('DELETE FROM notes WHERE user_id = ? AND question_id = ?', [currentUser(res).id, questionId])
   }
   res.status(204).end()
 })
 
-router.post('/me/ratings', (req, res) => {
+router.post('/me/ratings', async (req, res) => {
   const questionId = text(body(req).questionId, 100)
   const rating = oneOf(body(req).rating, PRACTICE_RATINGS)
   if (!questionId || !rating) return bad(res, 'invalid_rating')
   const event: RatingEvent = { questionId, rating, at: nowIso() }
-  db.prepare('INSERT INTO ratings (user_id, question_id, rating, at) VALUES (?, ?, ?, ?)').run(
+  await run('INSERT INTO ratings (user_id, question_id, rating, at) VALUES (?, ?, ?, ?)', [
     currentUser(res).id,
     event.questionId,
     event.rating,
     event.at,
-  )
+  ])
   res.status(201).json(event)
 })
 
@@ -293,24 +291,24 @@ function parseCard(input: Body, existing?: Flashcard): Flashcard | null {
   }
 }
 
-router.post('/me/cards', (req, res) => {
+router.post('/me/cards', async (req, res) => {
   const card = parseCard(body(req))
   if (!card) return bad(res, 'invalid_card')
-  insertDocument('cards', currentUser(res).id, card)
+  await insertDocument('cards', currentUser(res).id, card)
   res.status(201).json(card)
 })
 
-router.put('/me/cards/:id', (req, res) => {
-  const row = ownedRow('cards', req.params.id, currentUser(res).id)
+router.put('/me/cards/:id', async (req, res) => {
+  const row = await ownedRow('cards', req.params.id, currentUser(res).id)
   if (!row) return notFound(res)
   const card = parseCard(body(req), parseDocument<Flashcard>(row))
   if (!card) return bad(res, 'invalid_card')
-  updateDocument('cards', card)
+  await updateDocument('cards', card)
   res.json(card)
 })
 
-router.delete('/me/cards/:id', (req, res) => {
-  db.prepare('DELETE FROM cards WHERE id = ? AND user_id = ?').run(String(req.params.id), currentUser(res).id)
+router.delete('/me/cards/:id', async (req, res) => {
+  await run('DELETE FROM cards WHERE id = ? AND user_id = ?', [String(req.params.id), currentUser(res).id])
   res.status(204).end()
 })
 
@@ -337,24 +335,24 @@ function parseTarget(input: Body, existing?: TargetInterview): TargetInterview |
   }
 }
 
-router.post('/me/targets', (req, res) => {
+router.post('/me/targets', async (req, res) => {
   const target = parseTarget(body(req))
   if (!target) return bad(res, 'invalid_target')
-  insertDocument('targets', currentUser(res).id, target)
+  await insertDocument('targets', currentUser(res).id, target)
   res.status(201).json(target)
 })
 
-router.put('/me/targets/:id', (req, res) => {
-  const row = ownedRow('targets', req.params.id, currentUser(res).id)
+router.put('/me/targets/:id', async (req, res) => {
+  const row = await ownedRow('targets', req.params.id, currentUser(res).id)
   if (!row) return notFound(res)
   const target = parseTarget(body(req), parseDocument<TargetInterview>(row))
   if (!target) return bad(res, 'invalid_target')
-  updateDocument('targets', target)
+  await updateDocument('targets', target)
   res.json(target)
 })
 
-router.delete('/me/targets/:id', (req, res) => {
-  db.prepare('DELETE FROM targets WHERE id = ? AND user_id = ?').run(String(req.params.id), currentUser(res).id)
+router.delete('/me/targets/:id', async (req, res) => {
+  await run('DELETE FROM targets WHERE id = ? AND user_id = ?', [String(req.params.id), currentUser(res).id])
   res.status(204).end()
 })
 
@@ -389,24 +387,24 @@ function parseInterview(input: Body, existing?: Interview): Interview | null {
   }
 }
 
-router.post('/me/interviews', (req, res) => {
+router.post('/me/interviews', async (req, res) => {
   const interview = parseInterview(body(req))
   if (!interview) return bad(res, 'invalid_interview')
-  insertDocument('interviews', currentUser(res).id, interview)
+  await insertDocument('interviews', currentUser(res).id, interview)
   res.status(201).json(interview)
 })
 
-router.put('/me/interviews/:id', (req, res) => {
-  const row = ownedRow('interviews', req.params.id, currentUser(res).id)
+router.put('/me/interviews/:id', async (req, res) => {
+  const row = await ownedRow('interviews', req.params.id, currentUser(res).id)
   if (!row) return notFound(res)
   const interview = parseInterview(body(req), parseDocument<Interview>(row))
   if (!interview) return bad(res, 'invalid_interview')
-  updateDocument('interviews', interview)
+  await updateDocument('interviews', interview)
   res.json(interview)
 })
 
-router.delete('/me/interviews/:id', (req, res) => {
-  db.prepare('DELETE FROM interviews WHERE id = ? AND user_id = ?').run(String(req.params.id), currentUser(res).id)
+router.delete('/me/interviews/:id', async (req, res) => {
+  await run('DELETE FROM interviews WHERE id = ? AND user_id = ?', [String(req.params.id), currentUser(res).id])
   res.status(204).end()
 })
 
@@ -452,30 +450,30 @@ function parseQuestion(input: Body, existing?: Question): Question | null {
   }
 }
 
-router.post('/me/questions', (req, res) => {
+router.post('/me/questions', async (req, res) => {
   const question = parseQuestion(body(req))
   if (!question) return bad(res, 'invalid_question')
-  insertDocument('questions', currentUser(res).id, question)
+  await insertDocument('questions', currentUser(res).id, question)
   res.status(201).json(question)
 })
 
-router.put('/me/questions/:id', (req, res) => {
-  const row = ownedRow('questions', req.params.id, currentUser(res).id)
+router.put('/me/questions/:id', async (req, res) => {
+  const row = await ownedRow('questions', req.params.id, currentUser(res).id)
   if (!row) return notFound(res)
   const question = parseQuestion(body(req), parseDocument<Question>(row))
   if (!question) return bad(res, 'invalid_question')
-  updateDocument('questions', question)
+  await updateDocument('questions', question)
   res.json(question)
 })
 
-router.delete('/me/questions/:id', (req, res) => {
+router.delete('/me/questions/:id', async (req, res) => {
   const userId = currentUser(res).id
   const id = String(req.params.id)
-  db.prepare('DELETE FROM questions WHERE id = ? AND user_id = ?').run(id, userId)
+  await run('DELETE FROM questions WHERE id = ? AND user_id = ?', [id, userId])
   // The question is gone, so the user's interviews should not point at it any more.
-  for (const interview of listDocuments<Interview>('interviews', userId)) {
+  for (const interview of await listDocuments<Interview>('interviews', userId)) {
     if (interview.questionIds.includes(id)) {
-      updateDocument('interviews', { ...interview, questionIds: interview.questionIds.filter((questionId) => questionId !== id) })
+      await updateDocument('interviews', { ...interview, questionIds: interview.questionIds.filter((questionId) => questionId !== id) })
     }
   }
   res.status(204).end()
@@ -532,26 +530,26 @@ router.post('/me/ai/questions', async (req, res) => {
 
 // ---------- Admin ----------
 
-router.get('/admin/users', requireAdmin, (_req, res) => {
-  const rows = db
-    .prepare(
-      `SELECT u.id, u.email, u.name, u.role, u.created_at,
-              (SELECT COUNT(*) FROM notes n WHERE n.user_id = u.id)      AS notes,
-              (SELECT COUNT(*) FROM ratings r WHERE r.user_id = u.id)    AS ratings,
-              (SELECT COUNT(*) FROM cards c WHERE c.user_id = u.id)      AS cards,
-              (SELECT COUNT(*) FROM targets t WHERE t.user_id = u.id)    AS targets,
-              (SELECT COUNT(*) FROM interviews i WHERE i.user_id = u.id) AS interviews,
-              (SELECT COUNT(*) FROM questions q WHERE q.user_id = u.id)  AS questions
-       FROM users u ORDER BY u.created_at`,
-    )
-    .all() as unknown as (UserRow & {
-    notes: number
-    ratings: number
-    cards: number
-    targets: number
-    interviews: number
-    questions: number
-  })[]
+type AdminRow = UserRow & {
+  notes: number
+  ratings: number
+  cards: number
+  targets: number
+  interviews: number
+  questions: number
+}
+
+router.get('/admin/users', requireAdmin, async (_req, res) => {
+  const rows = await all<AdminRow>(
+    `SELECT u.id, u.email, u.name, u.role, u.created_at,
+            (SELECT COUNT(*) FROM notes n WHERE n.user_id = u.id)      AS notes,
+            (SELECT COUNT(*) FROM ratings r WHERE r.user_id = u.id)    AS ratings,
+            (SELECT COUNT(*) FROM cards c WHERE c.user_id = u.id)      AS cards,
+            (SELECT COUNT(*) FROM targets t WHERE t.user_id = u.id)    AS targets,
+            (SELECT COUNT(*) FROM interviews i WHERE i.user_id = u.id) AS interviews,
+            (SELECT COUNT(*) FROM questions q WHERE q.user_id = u.id)  AS questions
+     FROM users u ORDER BY u.created_at`,
+  )
   res.json({
     users: rows.map((row) => ({
       ...toPublicUser(row),
@@ -567,8 +565,8 @@ router.get('/admin/users', requireAdmin, (_req, res) => {
   })
 })
 
-router.get('/admin/users/:id', requireAdmin, (req, res) => {
-  const row = db.prepare('SELECT * FROM users WHERE id = ?').get(String(req.params.id)) as UserRow | undefined
+router.get('/admin/users/:id', requireAdmin, async (req, res) => {
+  const row = await get<UserRow>('SELECT * FROM users WHERE id = ?', [String(req.params.id)])
   if (!row) return notFound(res)
-  res.json({ user: toPublicUser(row), ...loadAccount(row.id) })
+  res.json({ user: toPublicUser(row), ...(await loadAccount(row.id)) })
 })

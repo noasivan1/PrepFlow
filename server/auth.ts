@@ -1,7 +1,7 @@
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
 import type { NextFunction, Request, Response } from 'express'
 import type { User } from '../src/types/index.ts'
-import { db, nowIso } from './db.ts'
+import { get, nowIso, run } from './db.ts'
 
 /**
  * Passwords: scrypt with a random salt (built into Node, no bcrypt needed).
@@ -39,19 +39,15 @@ export function toPublicUser(row: UserRow): User {
   return { id: row.id, email: row.email, name: row.name, role: row.role, createdAt: row.created_at }
 }
 
-export function createSession(userId: string): { token: string; expiresAt: Date } {
+export async function createSession(userId: string): Promise<{ token: string; expiresAt: Date }> {
   const token = randomBytes(32).toString('hex')
   const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000)
-  db.prepare('INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)').run(
-    token,
-    userId,
-    expiresAt.toISOString(),
-  )
+  await run('INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)', [token, userId, expiresAt.toISOString()])
   return { token, expiresAt }
 }
 
-export function deleteSession(token: string) {
-  db.prepare('DELETE FROM sessions WHERE token = ?').run(token)
+export async function deleteSession(token: string): Promise<void> {
+  await run('DELETE FROM sessions WHERE token = ?', [token])
 }
 
 export function setSessionCookie(res: Response, token: string, expiresAt: Date) {
@@ -80,22 +76,20 @@ export function readCookie(req: Request, name: string): string | undefined {
   return undefined
 }
 
-export function userFromRequest(req: Request): UserRow | undefined {
+export async function userFromRequest(req: Request): Promise<UserRow | undefined> {
   const token = readCookie(req, SESSION_COOKIE)
   if (!token) return undefined
-  const row = db
-    .prepare(
-      `SELECT u.id, u.email, u.name, u.password_hash, u.role, u.created_at
-       FROM sessions s JOIN users u ON u.id = s.user_id
-       WHERE s.token = ? AND s.expires_at > ?`,
-    )
-    .get(token, nowIso()) as UserRow | undefined
-  return row
+  return get<UserRow>(
+    `SELECT u.id, u.email, u.name, u.password_hash, u.role, u.created_at
+     FROM sessions s JOIN users u ON u.id = s.user_id
+     WHERE s.token = ? AND s.expires_at > ?`,
+    [token, nowIso()],
+  )
 }
 
 /** Express middleware: 401 unless a valid session cookie is present. The user lands in res.locals. */
-export function requireUser(req: Request, res: Response, next: NextFunction) {
-  const user = userFromRequest(req)
+export async function requireUser(req: Request, res: Response, next: NextFunction) {
+  const user = await userFromRequest(req)
   if (!user) {
     res.status(401).json({ error: 'unauthenticated' })
     return
@@ -104,8 +98,8 @@ export function requireUser(req: Request, res: Response, next: NextFunction) {
   next()
 }
 
-export function requireAdmin(req: Request, res: Response, next: NextFunction) {
-  const user = userFromRequest(req)
+export async function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  const user = await userFromRequest(req)
   if (!user) {
     res.status(401).json({ error: 'unauthenticated' })
     return
