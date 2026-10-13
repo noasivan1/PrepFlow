@@ -28,3 +28,7 @@ server/data/
 
 # Local secrets for the API server (see .env.example)
 .env
+
+# Any other env flavour (.env.local, .env.production, ...) stays out too; only the example is tracked
+.env.*
+!.env.example
