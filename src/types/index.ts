@@ -6,7 +6,8 @@
  * Data that has a name in both languages uses `LocalizedText`.
  */
 
-export type Language = 'en' | 'he'
+export const LANGUAGES = ['en', 'he'] as const
+export type Language = (typeof LANGUAGES)[number]
 export type Theme = 'light' | 'dark'
 
 export interface LocalizedText {
@@ -156,6 +157,67 @@ export interface QuestionDraft {
   generated?: boolean
 }
 
+/** How the grader judged an answer. */
+export const ANSWER_VERDICTS = ['incorrect', 'partially_correct', 'mostly_correct', 'correct'] as const
+export type AnswerVerdict = (typeof ANSWER_VERDICTS)[number]
+
+/** Structured feedback on one answer. Everything the UI shows comes from here, never a bare score. */
+export interface AnswerEvaluation {
+  /** 0-100. */
+  score: number
+  verdict: AnswerVerdict
+  strengths: string[]
+  missingPoints: string[]
+  incorrectPoints: string[]
+  feedback: string
+  improvedAnswer: string
+}
+
+/** One saved attempt at answering a question, with its evaluation. */
+export interface AnswerAttempt {
+  id: string
+  questionId: Question['id']
+  answer: string
+  score: number
+  verdict: AnswerVerdict
+  evaluation: AnswerEvaluation
+  /** ISO date-time. */
+  createdAt: string
+}
+
+/** Raw aggregate row behind `AnswerAttemptSummary` (server side). */
+export interface AccountAttemptRow {
+  question_id: string
+  attempts: number
+  best_score: number
+  latest_score: number
+  last_at: string
+}
+
+/** What the client sends to `POST /api/me/ai/evaluate-answer`. */
+export interface EvaluateAnswerRequest {
+  questionId: Question['id']
+  questionText: string
+  referenceAnswer: string
+  userAnswer: string
+  type: QuestionType
+  topic: Topic['id']
+  difficulty: Difficulty
+  language: Language
+  codeSolutions: CodeSnippet[]
+  role: string
+  company: string
+}
+
+/** Per-question roll-up of the user's attempts, loaded with the account. */
+export interface AnswerAttemptSummary {
+  questionId: Question['id']
+  attempts: number
+  bestScore: number
+  latestScore: number
+  lastAt: string
+}
+
 /** A question proposed by the AI helper, before the user saves it to their bank. */
 export interface GeneratedQuestion {
   text: LocalizedText
@@ -280,6 +342,8 @@ export interface AccountData {
   interviews: Interview[]
   /** Questions the user created themselves. */
   questions: Question[]
+  /** One row per question the user has answered, newest attempt summarised. */
+  attemptSummaries: AnswerAttemptSummary[]
 }
 
 /** A session length the user can pick on the practice page. */

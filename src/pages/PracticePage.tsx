@@ -8,7 +8,6 @@ import {
   CalendarDays,
   Clock,
   Code2,
-  Eye,
   Flag,
   PartyPopper,
   Play,
@@ -25,6 +24,7 @@ import {
 } from 'lucide-react'
 import { AiSuggestions } from '../components/AiSuggestions'
 import { AnswerText } from '../components/AnswerText'
+import { AnswerWorkspace } from '../components/AnswerWorkspace'
 import { CodeSolutions } from '../components/CodeSolutions'
 import { CompanyAvatar } from '../components/CompanyAvatar'
 import { FlashcardModal } from '../components/FlashcardModal'
@@ -768,6 +768,8 @@ function PracticeSession({ planId, seed, onExit, onNewSet }: PracticeSessionProp
   const topic = topics.get(current.topicId)
   const progress = (index / total) * 100
   const isCoding = current.type === 'coding'
+  const roleName = context.roleId ? getRole(context.roleId)?.name.en : undefined
+  const companyName = context.prefs.companyId ? getCompany(context.prefs.companyId)?.name.en : undefined
   const title = localize(current.text)
   const askedLabel =
     current.timesAsked === 1 ? t('common.askedOnce') : t('common.askedTimes', { count: current.timesAsked })
@@ -826,10 +828,22 @@ function PracticeSession({ planId, seed, onExit, onNewSet }: PracticeSessionProp
           </div>
         )}
 
-        {isRevealed ? (
+        {/* 1. The user's own attempt, graded against the recommended answer. */}
+        <AnswerWorkspace
+          key={current.id}
+          question={current}
+          revealed={isRevealed}
+          onReveal={() => setIsRevealed(true)}
+          hint={isCoding ? t('practice.codingHint') : t('practice.hint')}
+          roleName={roleName}
+          companyName={companyName}
+        />
+
+        {isRevealed && (
           <div className="mt-6 animate-fade-in">
+            {/* 2. The recommended answer and its code. */}
             <p className="text-xs font-semibold tracking-wider text-slate-500 uppercase dark:text-slate-400">
-              {t('question.answer')}
+              {t('answer.recommended')}
             </p>
             {current.answer ? (
               <AnswerText
@@ -865,7 +879,8 @@ function PracticeSession({ planId, seed, onExit, onNewSet }: PracticeSessionProp
               </div>
             )}
 
-            <div className="mt-5">
+            {/* 3. Notes: reminders for later, not the answer itself. */}
+            <div className="mt-6 border-t border-slate-100 pt-5 dark:border-slate-800">
               <NotesEditor questionId={current.id} compact />
               <div className="mt-2 flex justify-end">
                 <Button variant="ghost" size="sm" onClick={() => setCardOpen(true)}>
@@ -875,6 +890,7 @@ function PracticeSession({ planId, seed, onExit, onNewSet }: PracticeSessionProp
               </div>
             </div>
 
+            {/* 4. Self-rating closes the question. */}
             <p className="mt-6 text-sm font-medium text-slate-700 dark:text-slate-300">{t('practice.howWell')}</p>
             <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
               {PRACTICE_RATINGS.map((rating) => (
@@ -892,16 +908,6 @@ function PracticeSession({ planId, seed, onExit, onNewSet }: PracticeSessionProp
                 </button>
               ))}
             </div>
-          </div>
-        ) : (
-          <div className="mt-8">
-            <Button size="lg" className="w-full sm:w-auto" onClick={() => setIsRevealed(true)}>
-              <Eye aria-hidden className="size-4" />
-              {t('practice.reveal')}
-            </Button>
-            <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
-              {isCoding ? t('practice.codingHint') : t('practice.hint')}
-            </p>
           </div>
         )}
       </Card>

@@ -1,6 +1,9 @@
 import { createContext, useContext } from 'react'
 import type {
   AccountSettings,
+  AnswerAttempt,
+  AnswerAttemptSummary,
+  EvaluateAnswerRequest,
   Flashcard,
   FlashcardDraft,
   Interview,
@@ -75,6 +78,13 @@ export interface UserDataContextValue {
   addUserInterview: (draft: InterviewDraft) => Promise<Interview>
   updateUserInterview: (id: Interview['id'], draft: InterviewDraft) => Promise<Interview>
   deleteUserInterview: (id: Interview['id']) => Promise<void>
+
+  /** Latest and best graded attempt per question the user has answered. */
+  attemptSummaries: Record<Question['id'], AnswerAttemptSummary>
+  /** Sends an answer to the grader; the attempt is saved to the account and returned. */
+  evaluateAnswer: (request: EvaluateAnswerRequest) => Promise<AnswerAttempt>
+  /** Full history for one question, newest first. */
+  loadAttempts: (questionId: Question['id']) => Promise<AnswerAttempt[]>
 
   /** Questions the user wrote themselves. */
   userQuestions: Question[]

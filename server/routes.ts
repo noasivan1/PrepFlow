@@ -4,13 +4,18 @@ import {
   CODE_LANGUAGES,
   DIFFICULTY_LEVELS,
   FLASHCARD_KINDS,
+  LANGUAGES,
   INTERVIEW_STAGES,
   INTERVIEW_STATUSES,
   LANGUAGE_TOPIC_IDS,
   PRACTICE_EMPHASES,
   PRACTICE_RATINGS,
   QUESTION_TYPES,
+  type AccountAttemptRow,
   type AccountSettings,
+  type AnswerAttempt,
+  type AnswerAttemptSummary,
+  type AnswerEvaluation,
   type CodeSnippet,
   type Flashcard,
   type Interview,
@@ -19,7 +24,7 @@ import {
   type RatingEvent,
   type TargetInterview,
 } from '../src/types/index.ts'
-import { AiNotConfiguredError, generateQuestions, type GenerateInput } from './ai.ts'
+import { AiNotConfiguredError, evaluateAnswer, generateQuestions, type EvaluateInput, type GenerateInput } from './ai/index.ts'
 import {
   clearSessionCookie,
   createSession,
@@ -213,14 +218,15 @@ async function loadAccount(userId: string) {
     )
   ).map((row) => ({ questionId: row.question_id, rating: row.rating, at: row.at }))
 
-  const [cards, targets, interviews, questions] = await Promise.all([
+  const [cards, targets, interviews, questions, attemptSummaries] = await Promise.all([
     listDocuments<Flashcard>('cards', userId),
     listDocuments<TargetInterview>('targets', userId),
     listDocuments<Interview>('interviews', userId),
     listDocuments<Question>('questions', userId),
+    loadAttemptSummaries(userId),
   ])
 
-  return { settings, notes, ratings, cards, targets, interviews, questions }
+  return { settings, notes, ratings, cards, targets, interviews, questions, attemptSummaries }
 }
 
 router.get('/me/data', async (_req, res) => {
@@ -477,6 +483,145 @@ router.delete('/me/questions/:id', async (req, res) => {
     }
   }
   res.status(204).end()
+})
+
+// ----- Answer attempts: the user's own answers, graded by the AI -----
+
+const MAX_ANSWER_LENGTH = 4000
+/** Evaluations per user per hour; a plain count on the attempts table, no extra infrastructure. */
+const EVALUATIONS_PER_HOUR = Number(process.env.PREPFLOW_EVAL_HOURLY_LIMIT ?? 30)
+
+interface AttemptRow {
+  id: string
+  question_id: string
+  answer: string
+  score: number
+  verdict: AnswerAttempt['verdict']
+  feedback: string
+  created_at: string
+}
+
+function toAttempt(row: AttemptRow): AnswerAttempt {
+  let evaluation: AnswerEvaluation
+  try {
+    evaluation = JSON.parse(row.feedback) as AnswerEvaluation
+  } catch {
+    evaluation = {
+      score: row.score,
+      verdict: row.verdict,
+      strengths: [],
+      missingPoints: [],
+      incorrectPoints: [],
+      feedback: row.feedback,
+      improvedAnswer: '',
+    }
+  }
+  return {
+    id: row.id,
+    questionId: row.question_id,
+    answer: row.answer,
+    score: row.score,
+    verdict: row.verdict,
+    evaluation,
+    createdAt: row.created_at,
+  }
+}
+
+async function loadAttemptSummaries(userId: string): Promise<AnswerAttemptSummary[]> {
+  const rows = await all<AccountAttemptRow>(
+    `SELECT a.question_id,
+            COUNT(*) AS attempts,
+            MAX(a.score) AS best_score,
+            MAX(a.created_at) AS last_at,
+            (SELECT b.score FROM answer_attempts b
+              WHERE b.user_id = a.user_id AND b.question_id = a.question_id
+              ORDER BY b.created_at DESC LIMIT 1) AS latest_score
+     FROM answer_attempts a WHERE a.user_id = ? GROUP BY a.question_id`,
+    [userId],
+  )
+  return rows.map((row) => ({
+    questionId: row.question_id,
+    attempts: Number(row.attempts),
+    bestScore: Number(row.best_score),
+    latestScore: Number(row.latest_score),
+    lastAt: row.last_at,
+  }))
+}
+
+function parseEvaluateInput(input: Body): { questionId: string; evaluate: EvaluateInput } | null {
+  const questionId = text(input.questionId, 100)
+  const questionText = text(input.questionText, 4000)
+  const userAnswer = text(input.userAnswer, MAX_ANSWER_LENGTH)
+  const type = oneOf(input.type, QUESTION_TYPES)
+  const difficulty = oneOf(input.difficulty, DIFFICULTY_LEVELS)
+  if (!questionId || !questionText || !userAnswer || !type || !difficulty) return null
+  return {
+    questionId,
+    evaluate: {
+      questionText,
+      referenceAnswer: optionalText(input.referenceAnswer, 8000),
+      userAnswer,
+      type,
+      topic: optionalText(input.topic, 60),
+      difficulty,
+      language: oneOf(input.language, LANGUAGES) ?? 'en',
+      codeSolutions: parseSnippets(input.codeSolutions).slice(0, 3),
+      role: optionalText(input.role, 120),
+      company: optionalText(input.company, 120),
+    },
+  }
+}
+
+router.post('/me/ai/evaluate-answer', async (req, res) => {
+  const parsed = parseEvaluateInput(body(req))
+  if (!parsed) return bad(res, 'invalid_answer')
+  const userId = currentUser(res).id
+
+  const since = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+  const recent = await get<{ n: number }>('SELECT COUNT(*) AS n FROM answer_attempts WHERE user_id = ? AND created_at > ?', [
+    userId,
+    since,
+  ])
+  if ((recent?.n ?? 0) >= EVALUATIONS_PER_HOUR) {
+    res.status(429).json({ error: 'rate_limited' })
+    return
+  }
+
+  let evaluation: AnswerEvaluation
+  try {
+    evaluation = (await evaluateAnswer(parsed.evaluate)).evaluation
+  } catch (error) {
+    if (error instanceof AiNotConfiguredError) {
+      res.status(503).json({ error: 'ai_not_configured' })
+      return
+    }
+    console.error('Answer evaluation failed:', error)
+    res.status(502).json({ error: 'ai_failed' })
+    return
+  }
+
+  const attempt: AnswerAttempt = {
+    id: randomUUID(),
+    questionId: parsed.questionId,
+    answer: parsed.evaluate.userAnswer,
+    score: evaluation.score,
+    verdict: evaluation.verdict,
+    evaluation,
+    createdAt: nowIso(),
+  }
+  await run(
+    'INSERT INTO answer_attempts (id, user_id, question_id, answer, score, verdict, feedback, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    [attempt.id, userId, attempt.questionId, attempt.answer, attempt.score, attempt.verdict, JSON.stringify(evaluation), attempt.createdAt],
+  )
+  res.status(201).json({ attempt })
+})
+
+router.get('/me/attempts/:questionId', async (req, res) => {
+  const rows = await all<AttemptRow>(
+    'SELECT id, question_id, answer, score, verdict, feedback, created_at FROM answer_attempts WHERE user_id = ? AND question_id = ? ORDER BY created_at DESC LIMIT 20',
+    [currentUser(res).id, String(req.params.questionId)],
+  )
+  res.json({ attempts: rows.map(toAttempt) })
 })
 
 // ----- AI helper: new questions in the style of this interview -----

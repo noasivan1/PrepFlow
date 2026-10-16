@@ -4,6 +4,9 @@ import { todayIso } from '../lib/utils'
 import type {
   AccountData,
   AccountSettings,
+  AnswerAttempt,
+  AnswerAttemptSummary,
+  EvaluateAnswerRequest,
   Flashcard,
   FlashcardDraft,
   Interview,
@@ -28,6 +31,7 @@ const EMPTY: AccountData = {
   targets: [],
   interviews: [],
   questions: [],
+  attemptSummaries: [],
 }
 
 /** The loaded account, tagged with whose it is so a sign-out or user switch never shows stale data. */
@@ -275,6 +279,47 @@ export function UserDataProvider({ children }: { children: ReactNode }) {
     [mutate],
   )
 
+  // ----- Answer attempts (graded by the AI) -----
+
+  const attemptSummaries = useMemo(
+    () => Object.fromEntries(account.attemptSummaries.map((summary) => [summary.questionId, summary])) as Record<
+      Question['id'],
+      AnswerAttemptSummary
+    >,
+    [account.attemptSummaries],
+  )
+
+  const evaluateAnswer = useCallback(
+    async (request: EvaluateAnswerRequest) => {
+      const { attempt } = await api.post<{ attempt: AnswerAttempt }>('/api/me/ai/evaluate-answer', request)
+      mutate((data) => {
+        const existing = data.attemptSummaries.find((summary) => summary.questionId === attempt.questionId)
+        const updated: AnswerAttemptSummary = existing
+          ? {
+              ...existing,
+              attempts: existing.attempts + 1,
+              bestScore: Math.max(existing.bestScore, attempt.score),
+              latestScore: attempt.score,
+              lastAt: attempt.createdAt,
+            }
+          : { questionId: attempt.questionId, attempts: 1, bestScore: attempt.score, latestScore: attempt.score, lastAt: attempt.createdAt }
+        return {
+          ...data,
+          attemptSummaries: existing
+            ? data.attemptSummaries.map((summary) => (summary.questionId === attempt.questionId ? updated : summary))
+            : [...data.attemptSummaries, updated],
+        }
+      })
+      return attempt
+    },
+    [mutate],
+  )
+
+  const loadAttempts = useCallback(async (questionId: Question['id']) => {
+    const { attempts } = await api.get<{ attempts: AnswerAttempt[] }>(`/api/me/attempts/${encodeURIComponent(questionId)}`)
+    return attempts
+  }, [])
+
   // ----- Questions the user wrote -----
 
   const addQuestion = useCallback(
@@ -346,6 +391,9 @@ export function UserDataProvider({ children }: { children: ReactNode }) {
       addUserInterview,
       updateUserInterview,
       deleteUserInterview,
+      attemptSummaries,
+      evaluateAnswer,
+      loadAttempts,
       userQuestions: account.questions,
       addQuestion,
       updateQuestion,
@@ -374,6 +422,9 @@ export function UserDataProvider({ children }: { children: ReactNode }) {
       addUserInterview,
       updateUserInterview,
       deleteUserInterview,
+      attemptSummaries,
+      evaluateAnswer,
+      loadAttempts,
       addQuestion,
       updateQuestion,
       deleteQuestion,

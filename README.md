@@ -58,7 +58,7 @@ database lives in **Turso** (hosted libSQL); locally the very same client reads 
    (`libsql://...turso.io`) and create an auth token.
 3. **Vercel**: "Add New Project" → import the GitHub repo. Vercel reads `vercel.json`. Under
    *Environment Variables* add `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` and, optionally,
-   `ANTHROPIC_API_KEY`. Deploy.
+   `GEMINI_API_KEY` (answer checking) and `ANTHROPIC_API_KEY`. Deploy.
 4. Open the `https://...vercel.app` address, register (the first account is the admin) and add
    it to the phone's home screen. Every later `git push` to `main` redeploys.
 
@@ -72,7 +72,7 @@ about a second (cold start).
 with the API on one port, with the SQLite file in `server/data/`. The `Dockerfile` does exactly
 that; mount a **persistent disk** at `/app/server/data` (or point `PREPFLOW_DB` into one),
 otherwise the database is lost on every deploy. Deploy from GitHub, add the volume, set
-`ANTHROPIC_API_KEY` if wanted. Costs a few dollars a month; no code changes, no second service.
+`GEMINI_API_KEY` / `ANTHROPIC_API_KEY` if wanted. Costs a few dollars a month; no code changes, no second service.
 
 Updates never need a fresh database: tables are created with `CREATE TABLE IF NOT EXISTS` and the
 per-user documents are JSON, so new fields are additive. Back up by copying `prepflow.db` (or with
@@ -102,6 +102,7 @@ per-user documents are JSON, so new fields are additive. Back up by copying `pre
 | `targets` | JSON document | `TargetInterview` (upcoming interview + requirements text) | onboarding, Interviews page |
 | `interviews` | JSON document | `Interview` (with `questionIds`) | "Add interview", logging a passed target, copying a sample |
 | `questions` | JSON document | `Question` (`custom: true`, `generated: true` for AI ones) | interview form, question bank, the AI helper |
+| `answer_attempts` | real columns: question_id, answer, score, verdict, feedback (JSON evaluation), created_at | `AnswerAttempt` | "Check my answer" in practice |
 
 Small, structured things get real columns; documents whose shape may still change are one JSON
 `data` column, and the TypeScript types in `src/types/index.ts` are the schema. `GET /api/me/data`
@@ -182,6 +183,31 @@ Seed content exists in both languages, so question and answer text is laid out b
 "O(log n)" or "mutex" still reads right-to-left. Text the user typed is detected by the browser.
 Long answers are split into paragraphs for display (`AnswerText`); explicit line breaks in an answer win.
 
+## Answering questions in practice
+
+Every practice card has a **My answer** area: write the answer, then **Check my answer** sends it to
+the grader together with the recommended answer (the source of truth), the question type, topic and
+difficulty, and returns structured feedback: verdict and score, what was correct, what is missing,
+what was incorrect, how to improve, and an expandable improved version of the answer. Wording does
+not have to match; coding answers are judged on approach, correctness and complexity. The recommended
+answer, **My notes** (a separate thing: reminders for later) and the self-rating follow, in that order.
+**Show recommended answer** skips the check.
+
+Attempts are saved per user in `answer_attempts`; a question answered before shows "You answered
+this before · N attempts · best X%", the previous answers and feedback can be opened, and a new check
+shows "Previous / Current". Limits: 4000 characters per answer, 30 checks per user per hour
+(`PREPFLOW_EVAL_HOURLY_LIMIT`).
+
+## AI providers
+
+`server/ai/` is the only place that talks to a model vendor. Features build a prompt and parse the
+reply (`evaluate.ts`, `questions.ts`); a provider (`gemini.ts`, `anthropic.ts`) just turns a
+prompt into text; `index.ts` picks one from the environment. Answer checking prefers **Gemini**
+(`GEMINI_API_KEY`, model `GEMINI_MODEL`, default `gemini-2.5-flash`); question generation prefers
+Anthropic (`ANTHROPIC_API_KEY`) and falls back to Gemini. Keys are read server-side only; without any
+key the UI explains what to set instead of failing. `PREPFLOW_AI=stub` returns canned replies and
+`PREPFLOW_AI=fail` always errors, for development and tests.
+
 ## AI helper (optional)
 
 On the practice page, "More questions in this interview's style (AI)" asks a Claude model for new
@@ -190,10 +216,9 @@ questions already asked at that company (your own questions are used as style ex
 suggestion has a likelihood, a reason and a model answer; "Save to bank" stores it as your own question
 (badge "AI"), and from then on it is part of practice and predictions like any other question.
 
-Setup: copy `.env.example` to `.env`, set `ANTHROPIC_API_KEY`, restart `npm run dev`. The key is read
-only by the local API server (`server/ai.ts`, route `POST /api/me/ai/questions`); without it the card
-explains what to do instead of failing. `PREPFLOW_AI=stub` returns canned questions for development,
-`PREPFLOW_AI_MODEL` overrides the model (default `claude-sonnet-5`).
+Setup: copy `.env.example` to `.env`, set `ANTHROPIC_API_KEY` or `GEMINI_API_KEY`, restart `npm run dev`.
+The key is read only by the API server (route `POST /api/me/ai/questions`); without it the card explains
+what to do instead of failing.
 
 Why not scrape Glassdoor / LeetCode instead: they block scraping, company tags are a paid feature, and
 it is against their terms. A model that knows the common questions for a role, plus your own examples,
@@ -214,6 +239,7 @@ All routes live under `/api` and speak JSON.
 | Your interviews | `POST /me/interviews`, `PUT /me/interviews/:id`, `DELETE /me/interviews/:id` |
 | Your questions | `POST /me/questions`, `PUT /me/questions/:id`, `DELETE /me/questions/:id` (also unlinks it from your interviews) |
 | AI helper | `POST /me/ai/questions` (503 `ai_not_configured` without a key) |
+| Answer checking | `POST /me/ai/evaluate-answer` (201 with the saved attempt; 503 not configured, 502 failed, 429 rate-limited), `GET /me/attempts/:questionId` |
 | Admin | `GET /admin/users`, `GET /admin/users/:id` |
 
 Unauthenticated requests get `401`, non-admins on admin routes get `403`, bad input `400`
@@ -230,7 +256,7 @@ server/
   db.ts         libSQL client (local file or Turso), schema, small async query helpers
   auth.ts       password hashing, sessions, requireUser / requireAdmin middleware
   routes.ts     every endpoint with input validation
-  ai.ts         the AI helper: prompt, Claude API call, parsing (needs ANTHROPIC_API_KEY)
+  ai/           provider abstraction: provider.ts, gemini.ts, anthropic.ts, stub.ts, evaluate.ts, questions.ts, index.ts
   data/         the database file (git-ignored)
 src/
   api/          fetch wrapper with typed errors (client.ts)

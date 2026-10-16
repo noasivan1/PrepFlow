@@ -4,16 +4,14 @@ import {
   QUESTION_TYPES,
   type CodeSnippet,
   type GeneratedQuestion,
-} from '../src/types/index.ts'
+} from '../../src/types/index.ts'
+import { getProvider } from './index.ts'
+import { extractJson } from './provider.ts'
 
 /**
- * The AI helper: asks a Claude model for new interview questions in the style
- * of a specific interview. Everything it knows comes from the request (role,
- * company, posting, languages, the questions already asked there), so the
- * server itself stays free of app data.
- *
- * Needs ANTHROPIC_API_KEY (a .env file in the project root is loaded on start).
- * PREPFLOW_AI=stub returns canned questions without calling the API, for development.
+ * "More questions in this interview's style": asks a model for new interview
+ * questions. Everything it knows comes from the request (role, company,
+ * posting, languages, the questions already asked there).
  */
 
 export interface GenerateInput {
@@ -31,15 +29,6 @@ export interface GenerateInput {
   count: number
 }
 
-export class AiNotConfiguredError extends Error {
-  constructor() {
-    super('ANTHROPIC_API_KEY is not set')
-  }
-}
-
-export const AI_MODEL = process.env.PREPFLOW_AI_MODEL ?? 'claude-sonnet-5'
-const API_URL = 'https://api.anthropic.com/v1/messages'
-
 const SYSTEM =
   'You are a senior technical interviewer at Israeli tech companies (NVIDIA, Intel, Elbit, Rafael, Check Point, ...). ' +
   'You write realistic interview questions for one specific role, company and job posting, at the level a real interviewer would ask. ' +
@@ -53,6 +42,7 @@ function buildPrompt(input: GenerateInput): string {
         ? 'mostly conceptual / theory questions'
         : 'a balanced mix of coding exercises and conceptual questions'
   const lines: Array<string | null> = [
+    '[prepflow:generate-questions]',
     `Write ${input.count} NEW interview questions that are likely to be asked in this interview.`,
     input.role ? `Role: ${input.role.name} - ${input.role.description}` : null,
     input.company
@@ -107,10 +97,7 @@ function parseCode(value: unknown): CodeSnippet | undefined {
 
 /** Pulls the JSON array out of the model's reply and keeps only well-formed questions. */
 export function parseGenerated(text: string, input: GenerateInput): GeneratedQuestion[] {
-  const start = text.indexOf('[')
-  const end = text.lastIndexOf(']')
-  if (start < 0 || end <= start) throw new Error('The model did not return a JSON array')
-  const raw = JSON.parse(text.slice(start, end + 1)) as unknown
+  const raw = extractJson(text, 'array')
   if (!Array.isArray(raw)) throw new Error('The model did not return a JSON array')
   const allowedTopics = new Set(input.topics.map((topic) => topic.id))
   const fallbackTopic = input.topics[0]?.id ?? 'algorithms'
@@ -138,55 +125,9 @@ export function parseGenerated(text: string, input: GenerateInput): GeneratedQue
   })
 }
 
-/** Canned output for development, so the whole flow can be exercised without an API key. */
-function stubQuestions(input: GenerateInput): GeneratedQuestion[] {
-  const topic = input.topics.find((candidate) => candidate.id === 'python') ?? input.topics[0]
-  const where = input.company?.name ?? input.role?.name ?? 'this interview'
-  const questions: GeneratedQuestion[] = [
-    {
-      text: { en: `(stub) Parse a log file and report the top 3 error codes for ${where}.`, he: `(stub) נתחו קובץ לוג והחזירו את 3 קודי השגיאה הנפוצים עבור ${where}.` },
-      type: 'coding',
-      topicId: topic?.id ?? 'algorithms',
-      difficulty: 'easy',
-      likelihood: 'high',
-      why: { en: 'Log parsing in Python comes up in almost every verification screening.', he: 'ניתוח לוגים ב-Python מופיע כמעט בכל סינון לוריפיקציה.' },
-      answer: { en: 'Stream the file, count codes in a dict, take the three largest with heapq.nlargest. O(n).', he: 'קוראים את הקובץ בזרימה, סופרים קודים ב-dict ולוקחים את השלושה הגדולים עם heapq.nlargest. O(n).' },
-      code: { language: 'python', code: 'from collections import Counter\n\ndef top_errors(path, k=3):\n    counts = Counter()\n    with open(path) as f:\n        for line in f:\n            if " ERROR " in line:\n                counts[line.split()[3]] += 1\n    return counts.most_common(k)' },
-    },
-    {
-      text: { en: '(stub) What happens when a TCP segment is lost?', he: '(stub) מה קורה כשסגמנט TCP הולך לאיבוד?' },
-      type: 'conceptual',
-      topicId: input.topics.find((candidate) => candidate.id === 'networking')?.id ?? topic?.id ?? 'algorithms',
-      difficulty: 'medium',
-      likelihood: 'medium',
-      why: { en: 'Networking fundamentals are listed in the requirements.', he: 'יסודות רשתות מופיעים בדרישות.' },
-      answer: { en: 'The receiver keeps acknowledging the last in-order byte; duplicate ACKs or a retransmission timeout trigger a resend and congestion control slows down.', he: 'המקבל ממשיך לאשר את הבייט האחרון שהגיע בסדר; ACK-ים כפולים או timeout גורמים לשידור חוזר ובקרת הגודש מאיטה.' },
-    },
-  ]
-  return questions.slice(0, input.count)
-}
-
+/** Anthropic when its key is set (the original behaviour), otherwise any other configured provider. */
 export async function generateQuestions(input: GenerateInput): Promise<{ questions: GeneratedQuestion[]; model: string }> {
-  if (process.env.PREPFLOW_AI === 'stub') return { questions: stubQuestions(input), model: 'stub' }
-  const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) throw new AiNotConfiguredError()
-
-  const response = await fetch(API_URL, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({
-      model: AI_MODEL,
-      max_tokens: 8000,
-      system: SYSTEM,
-      messages: [{ role: 'user', content: buildPrompt(input) }],
-    }),
-    signal: AbortSignal.timeout(90_000),
-  })
-  if (!response.ok) throw new Error(`Anthropic API ${response.status}: ${(await response.text()).slice(0, 500)}`)
-  const data = (await response.json()) as { content?: Array<{ type: string; text?: string }> }
-  const text = (data.content ?? [])
-    .filter((block) => block.type === 'text')
-    .map((block) => block.text ?? '')
-    .join('')
-  return { questions: parseGenerated(text, input), model: AI_MODEL }
+  const provider = getProvider('anthropic')
+  const text = await provider.complete({ system: SYSTEM, prompt: buildPrompt(input), maxTokens: 8000, json: true })
+  return { questions: parseGenerated(text, input).slice(0, input.count), model: `${provider.name}/${provider.model}` }
 }
