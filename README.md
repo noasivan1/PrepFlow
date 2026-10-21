@@ -203,8 +203,10 @@ shows "Previous / Current". Limits: 4000 characters per answer, 30 checks per us
 `server/ai/` is the only place that talks to a model vendor. Features build a prompt and parse the
 reply (`evaluate.ts`, `questions.ts`); a provider (`gemini.ts`, `anthropic.ts`) just turns a
 prompt into text; `index.ts` picks one from the environment. Answer checking prefers **Gemini**
-(`GEMINI_API_KEY`, model `GEMINI_MODEL`, default `gemini-2.5-flash`); question generation prefers
-Anthropic (`ANTHROPIC_API_KEY`) and falls back to Gemini. Keys are read server-side only; without any
+(`GEMINI_API_KEY`, model `GEMINI_MODEL`, default `gemini-3.8-flash`); question generation prefers
+Anthropic (`ANTHROPIC_API_KEY`) and falls back to Gemini. When Google answers 503 (high demand) or 429,
+the Gemini provider retries once and then tries `gemini-3.7-flash` and `gemini-3.5-flash` before giving
+up. Keys are read server-side only; without any
 key the UI explains what to set instead of failing. `PREPFLOW_AI=stub` returns canned replies and
 `PREPFLOW_AI=fail` always errors, for development and tests.
 
