@@ -195,10 +195,18 @@ export function AnswerWorkspace({ question, revealed, onReveal, hint, roleName, 
     if (!canCheck) return
     setStatus({ kind: 'loading' })
     setPreviousScore(summary?.latestScore ?? null)
+    // The grader sees the whole statement, not just the short title: description and rules included.
+    const statement = [
+      localize(question.text),
+      question.details ? localize(question.details.description) : '',
+      ...(question.details?.rules ?? []).map((rule) => localize(rule)),
+    ]
+      .filter(Boolean)
+      .join('\n')
     try {
       const result = await evaluateAnswer({
         questionId: question.id,
-        questionText: localize(question.text),
+        questionText: statement,
         referenceAnswer: question.answer ? localize(question.answer) : '',
         userAnswer: answer.trim(),
         type: question.type,

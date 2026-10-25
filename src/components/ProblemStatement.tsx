@@ -1,5 +1,6 @@
 import type { ProblemDetails } from '../types'
 import { useTranslation } from '../i18n/useTranslation'
+import { BidiText } from './BidiText'
 import { textDirection } from '../lib/utils'
 
 /**
@@ -13,7 +14,9 @@ export function ProblemStatement({ details }: { details: ProblemDetails }) {
 
   return (
     <div className="space-y-5 text-[15px] leading-relaxed text-slate-700 dark:text-slate-300">
-      <p dir={direction}>{localize(details.description)}</p>
+      <p dir={direction}>
+        <BidiText text={localize(details.description)} />
+      </p>
 
       {details.rules && details.rules.length > 0 && (
         <section>
@@ -23,7 +26,7 @@ export function ProblemStatement({ details }: { details: ProblemDetails }) {
           <ul className="mt-2 list-disc space-y-1 ps-5">
             {details.rules.map((rule, index) => (
               <li key={index} dir={direction}>
-                {localize(rule)}
+                <BidiText text={localize(rule)} />
               </li>
             ))}
           </ul>
@@ -64,7 +67,7 @@ export function ProblemStatement({ details }: { details: ProblemDetails }) {
                         {t('problem.explanation')}
                       </dt>
                       <dd dir={direction} className="mt-0.5 text-sm">
-                        {localize(example.explanation)}
+                        <BidiText text={localize(example.explanation)} />
                       </dd>
                     </div>
                   )}
@@ -83,7 +86,7 @@ export function ProblemStatement({ details }: { details: ProblemDetails }) {
           <ul className="mt-2 list-disc space-y-1 ps-5 text-sm">
             {details.constraints.map((constraint, index) => (
               <li key={index} dir={direction}>
-                {localize(constraint)}
+                <BidiText text={localize(constraint)} />
               </li>
             ))}
           </ul>

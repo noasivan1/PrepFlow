@@ -1045,6 +1045,27 @@ p = NULL;               /* fix: null it out, so a later bug is a crash, not corr
       en: 'Count the number of set bits (1s) in an integer.',
       he: 'ספרו כמה ביטים דלוקים (1) יש במספר שלם.',
     },
+    details: {
+      description: {
+        en: 'Given a non-negative integer n, return how many bits in its binary representation are 1.',
+        he: 'נתון מספר שלם לא שלילי n. החזירו כמה ביטים בייצוג הבינארי שלו דלוקים (שווים ל-1).',
+      },
+      examples: [
+        {
+          input: 'n = 11',
+          output: '3',
+          explanation: { en: '11 is 1011 in binary: three 1s.', he: '11 בבינארי הוא 1011: שלושה ביטים דלוקים.' },
+        },
+        {
+          input: 'n = 128',
+          output: '1',
+          explanation: { en: '128 is 10000000 in binary: a single 1.', he: '128 בבינארי הוא 10000000: ביט דלוק אחד.' },
+        },
+      ],
+      constraints: [
+        { en: '0 ≤ n < 2^32', he: '0 ≤ n < 2^32' },
+      ],
+    },
     topicId: 'hardware',
     roleIds: ['embedded', 'software', 'student', 'verification'],
     type: 'coding',
@@ -1109,6 +1130,27 @@ p = NULL;               /* fix: null it out, so a later bug is a crash, not corr
       en: 'Check whether an integer is a power of two using bit operations.',
       he: 'בדקו אם מספר שלם הוא חזקה של 2 באמצעות פעולות על ביטים.',
     },
+    details: {
+      description: {
+        en: 'Given an integer n, return true if it is a power of two (1, 2, 4, 8, ...), otherwise false. Use bit operations rather than loops or division.',
+        he: 'נתון מספר שלם n. החזירו true אם הוא חזקה של 2 (1, 2, 4, 8, ...), אחרת false. השתמשו בפעולות על ביטים ולא בלולאות או בחילוק.',
+      },
+      examples: [
+        {
+          input: 'n = 16',
+          output: 'true',
+          explanation: { en: '16 = 2^4; in binary 10000, a single set bit.', he: '16 = 2^4; בבינארי 10000, ביט דלוק יחיד.' },
+        },
+        {
+          input: 'n = 12',
+          output: 'false',
+          explanation: { en: '12 is 1100 in binary: two set bits.', he: '12 בבינארי הוא 1100: שני ביטים דלוקים.' },
+        },
+      ],
+      constraints: [
+        { en: 'n may be zero or negative: neither is a power of two.', he: 'n יכול להיות אפס או שלילי: אף אחד מהם אינו חזקה של 2.' },
+      ],
+    },
     topicId: 'hardware',
     roleIds: ['embedded', 'software', 'student', 'verification'],
     type: 'coding',
@@ -1151,6 +1193,21 @@ p = NULL;               /* fix: null it out, so a later bug is a crash, not corr
     text: {
       en: 'Swap two integers without using a temporary variable.',
       he: 'החליפו בין שני מספרים שלמים בלי משתנה עזר.',
+    },
+    details: {
+      description: {
+        en: 'Given two integer variables a and b, exchange their values without declaring a third variable.',
+        he: 'נתונים שני משתנים שלמים a ו-b. החליפו ביניהם את הערכים בלי להגדיר משתנה שלישי.',
+      },
+      rules: [
+        { en: 'Explain what happens when a and b refer to the same memory location.', he: 'הסבירו מה קורה כאשר a ו-b מצביעים לאותו מקום בזיכרון.' },
+      ],
+      examples: [
+        {
+          input: 'a = 3, b = 8',
+          output: 'a = 8, b = 3',
+        },
+      ],
     },
     topicId: 'hardware',
     roleIds: ['embedded', 'software', 'student'],
@@ -1208,6 +1265,19 @@ static void swap(int[] arr, int i, int j) {
     text: {
       en: 'What is endianness? Write code that detects whether the machine is little-endian.',
       he: 'מהו Endianness? כתבו קוד שבודק אם המכונה היא little-endian או לא.',
+    },
+    details: {
+      description: {
+        en: 'Endianness is the order in which the bytes of a multi-byte value are stored in memory. Write a function that returns true when the machine stores the least significant byte first (little-endian).',
+        he: 'Endianness הוא הסדר שבו הבתים של ערך בן כמה בתים נשמרים בזיכרון. כתבו פונקציה שמחזירה true כאשר המכונה שומרת את הבית הפחות משמעותי ראשון (little-endian).',
+      },
+      examples: [
+        {
+          input: 'The 32-bit value 0x01020304 stored at address 0x1000',
+          output: 'little-endian: bytes 04 03 02 01\nbig-endian: bytes 01 02 03 04',
+          explanation: { en: 'Reading the first byte tells you the order: 0x04 means little-endian.', he: 'קריאת הבית הראשון מגלה את הסדר: 0x04 פירושו little-endian.' },
+        },
+      ],
     },
     topicId: 'hardware',
     roleIds: ['embedded', 'verification'],
@@ -1721,6 +1791,25 @@ cursor.execute("SELECT * FROM users WHERE name = %s", (name,))`,
       en: 'Reverse a singly linked list in place.',
       he: 'הפכו רשימה מקושרת חד-כיוונית במקום (in place).',
     },
+    details: {
+      description: {
+        en: 'Given the head of a singly linked list, reverse the list and return the new head. Do it in place: no new nodes, O(1) extra memory.',
+        he: 'נתון ראש (head) של רשימה מקושרת חד-כיוונית. הפכו את הרשימה והחזירו את הראש החדש. עשו זאת במקום: בלי צמתים חדשים, בזיכרון נוסף של O(1).',
+      },
+      examples: [
+        {
+          input: 'head = 1 -> 2 -> 3 -> 4 -> 5',
+          output: '5 -> 4 -> 3 -> 2 -> 1',
+        },
+        {
+          input: 'head = (empty list)',
+          output: '(empty list)',
+        },
+      ],
+      constraints: [
+        { en: '0 ≤ number of nodes ≤ 5000', he: '0 ≤ מספר הצמתים ≤ 5000' },
+      ],
+    },
     topicId: 'algorithms',
     roleIds: ['software', 'embedded', 'backend', 'student', 'verification'],
     type: 'coding',
@@ -1801,6 +1890,27 @@ def reverse(head):
       en: 'Find the first non-repeating character in a string.',
       he: 'מצאו את התו הראשון שלא חוזר על עצמו במחרוזת.',
     },
+    details: {
+      description: {
+        en: 'Given a string s, return the index of the first character that appears exactly once. If there is none, return -1.',
+        he: 'נתונה מחרוזת s. החזירו את האינדקס של התו הראשון שמופיע בדיוק פעם אחת. אם אין כזה, החזירו -1.',
+      },
+      examples: [
+        {
+          input: 's = "leetcode"',
+          output: '0',
+          explanation: { en: '"l" appears once and comes first.', he: '"l" מופיע פעם אחת והוא הראשון.' },
+        },
+        {
+          input: 's = "aabb"',
+          output: '-1',
+          explanation: { en: 'Every character repeats.', he: 'כל תו חוזר על עצמו.' },
+        },
+      ],
+      constraints: [
+        { en: 's contains only lowercase English letters', he: 's מכיל רק אותיות אנגליות קטנות' },
+      ],
+    },
     topicId: 'algorithms',
     roleIds: ['software', 'backend', 'frontend', 'student', 'data', 'verification'],
     type: 'coding',
@@ -1863,6 +1973,18 @@ def first_unique(s: str) -> int:
   {
     id: 'q-reverse-string',
     text: { en: 'Reverse a string in place.', he: 'הפכו מחרוזת במקום (in place).' },
+    details: {
+      description: {
+        en: 'Given a string stored as an array of characters, reverse it in place: modify the array itself using O(1) extra memory and return nothing.',
+        he: 'נתונה מחרוזת השמורה כמערך של תווים. הפכו אותה במקום: שנו את המערך עצמו בזיכרון נוסף של O(1), בלי להחזיר ערך.',
+      },
+      examples: [
+        {
+          input: 's = ["h","e","l","l","o"]',
+          output: '["o","l","l","e","h"]',
+        },
+      ],
+    },
     topicId: 'algorithms',
     roleIds: ['software', 'embedded', 'student', 'frontend', 'verification'],
     type: 'coding',
@@ -1926,6 +2048,28 @@ void reverse(char *s) {
     text: {
       en: 'Implement binary search on a sorted array, and state its time and space complexity.',
       he: 'ממשו חיפוש בינארי במערך ממוין, וציינו את סיבוכיות הזמן והמקום.',
+    },
+    details: {
+      description: {
+        en: 'Given a sorted array of distinct integers nums and a value target, return the index of target in nums, or -1 if it is not there. Then state the time and space complexity of your solution.',
+        he: 'נתונים מערך ממוין של מספרים שלמים שונים nums וערך target. החזירו את האינדקס של target ב-nums, או -1 אם אינו קיים. לאחר מכן ציינו את סיבוכיות הזמן והמקום של הפתרון.',
+      },
+      examples: [
+        {
+          input: 'nums = [-1, 0, 3, 5, 9, 12], target = 9',
+          output: '4',
+          explanation: { en: '9 is at index 4.', he: '9 נמצא באינדקס 4.' },
+        },
+        {
+          input: 'nums = [-1, 0, 3, 5, 9, 12], target = 2',
+          output: '-1',
+          explanation: { en: '2 is not in the array.', he: '2 לא נמצא במערך.' },
+        },
+      ],
+      constraints: [
+        { en: 'nums is sorted in ascending order and has no duplicates', he: 'nums ממוין בסדר עולה וללא כפילויות' },
+        { en: 'Aim for O(log n) time', he: 'שאפו לזמן O(log n)' },
+      ],
     },
     topicId: 'algorithms',
     roleIds: ['software', 'backend', 'student', 'data', 'verification', 'qa'],
@@ -2345,6 +2489,26 @@ LEFT JOIN departments d ON d.id = e.dept_id;
     text: {
       en: 'Write a SQL query to find the second highest salary.',
       he: 'כתבו שאילתת SQL שמוצאת את המשכורת השנייה בגובהה.',
+    },
+    details: {
+      description: {
+        en: 'The table Employee has the columns id and salary. Write a query that returns the second highest distinct salary. If there is no second highest salary, return NULL.',
+        he: 'בטבלה Employee יש את העמודות id ו-salary. כתבו שאילתה שמחזירה את המשכורת השנייה בגובהה (מבין הערכים השונים). אם אין משכורת שנייה בגובהה, החזירו NULL.',
+      },
+      rules: [
+        { en: 'Equal salaries count once: for 300, 300, 200 the answer is 200.', he: 'משכורות זהות נספרות פעם אחת: עבור 300, 300, 200 התשובה היא 200.' },
+      ],
+      examples: [
+        {
+          input: 'Employee: (1, 100), (2, 200), (3, 300)',
+          output: '200',
+        },
+        {
+          input: 'Employee: (1, 100)',
+          output: 'NULL',
+          explanation: { en: 'Only one salary exists.', he: 'קיימת רק משכורת אחת.' },
+        },
+      ],
     },
     topicId: 'sql',
     roleIds: ['backend', 'data', 'fullstack'],
@@ -3308,6 +3472,22 @@ std::vector<int> findAnomalies(const std::vector<double>& r) {
   {
     id: 'q-lru-cache',
     text: { en: 'Design an LRU cache with O(1) get and put.', he: 'תכננו LRU cache עם get ו-put ב-O(1).' },
+    details: {
+      description: {
+        en: 'Design a data structure that behaves like a Least Recently Used cache with a fixed capacity. get(key) returns the value or -1; put(key, value) inserts or updates, and when the capacity is exceeded it evicts the key that was used least recently. Both operations must run in O(1).',
+        he: 'תכננו מבנה נתונים שמתנהג כמו מטמון LRU (Least Recently Used) בקיבולת קבועה. get(key) מחזיר את הערך או -1; put(key, value) מכניס או מעדכן, וכאשר חורגים מהקיבולת הוא מסיר את המפתח שהשימוש בו היה הכי מזמן. שתי הפעולות חייבות לרוץ ב-O(1).',
+      },
+      rules: [
+        { en: 'Both get and put count as "using" a key.', he: 'גם get וגם put נחשבים "שימוש" במפתח.' },
+      ],
+      examples: [
+        {
+          input: 'capacity = 2\nput(1, 1); put(2, 2); get(1); put(3, 3); get(2); get(3)',
+          output: 'get(1) = 1, get(2) = -1, get(3) = 3',
+          explanation: { en: 'put(3, 3) evicted key 2 because key 1 had just been used.', he: 'put(3, 3) הסיר את מפתח 2, כי במפתח 1 השתמשו ממש לפני כן.' },
+        },
+      ],
+    },
     topicId: 'algorithms',
     roleIds: ['software', 'backend', 'verification', 'data', 'student'],
     type: 'coding',
@@ -3402,6 +3582,30 @@ class LRUCache extends LinkedHashMap<Integer, Integer> {
   {
     id: 'q-valid-parentheses',
     text: { en: 'Check whether a string of brackets ()[]{} is balanced.', he: 'בדקו אם מחרוזת של סוגריים ()[]{} מאוזנת.' },
+    details: {
+      description: {
+        en: 'Given a string containing only the characters ( ) [ ] { }, decide whether it is valid: every opening bracket is closed by the same type of bracket, and in the correct order.',
+        he: 'נתונה מחרוזת שמכילה רק את התווים ( ) [ ] { }. קבעו אם היא תקינה: כל סוגר פותח נסגר על ידי סוגר מאותו סוג, ובסדר הנכון.',
+      },
+      examples: [
+        {
+          input: 's = "()[]{}"',
+          output: 'true',
+        },
+        {
+          input: 's = "([)]"',
+          output: 'false',
+          explanation: { en: 'The ( is closed by ] before the [ is closed.', he: 'ה-( נסגר על ידי ] לפני שה-[ נסגר.' },
+        },
+        {
+          input: 's = "{[]}"',
+          output: 'true',
+        },
+      ],
+      constraints: [
+        { en: 'An empty string is valid', he: 'מחרוזת ריקה נחשבת תקינה' },
+      ],
+    },
     topicId: 'algorithms',
     roleIds: ['software', 'verification', 'qa', 'frontend', 'student'],
     type: 'coding',
@@ -3459,6 +3663,27 @@ bool isBalanced(const std::string& s) {
   {
     id: 'q-merge-intervals',
     text: { en: 'Merge all overlapping intervals in a list of [start, end] pairs.', he: 'מזגו את כל המקטעים החופפים ברשימה של זוגות [start, end].' },
+    details: {
+      description: {
+        en: 'Given a list of intervals, each a pair [start, end], merge every group of overlapping intervals and return the resulting list of non-overlapping intervals.',
+        he: 'נתונה רשימה של מקטעים, כל אחד זוג [start, end]. מזגו כל קבוצה של מקטעים חופפים והחזירו רשימה של מקטעים שאינם חופפים.',
+      },
+      examples: [
+        {
+          input: 'intervals = [[1,3],[2,6],[8,10],[15,18]]',
+          output: '[[1,6],[8,10],[15,18]]',
+          explanation: { en: '[1,3] and [2,6] overlap, so they become [1,6].', he: '[1,3] ו-[2,6] חופפים, ולכן הם הופכים ל-[1,6].' },
+        },
+        {
+          input: 'intervals = [[1,4],[4,5]]',
+          output: '[[1,5]]',
+          explanation: { en: 'Touching intervals count as overlapping.', he: 'מקטעים שנוגעים זה בזה נחשבים חופפים.' },
+        },
+      ],
+      constraints: [
+        { en: 'The input is not necessarily sorted', he: 'הקלט לא בהכרח ממוין' },
+      ],
+    },
     topicId: 'algorithms',
     roleIds: ['software', 'backend', 'verification', 'data'],
     type: 'coding',
@@ -3506,6 +3731,22 @@ std::vector<std::vector<int>> merge(std::vector<std::vector<int>> intervals) {
     text: {
       en: 'Detect whether a singly linked list has a cycle, in O(1) extra space.',
       he: 'בדקו אם ברשימה מקושרת חד-כיוונית יש מעגל, במקום נוסף של O(1).',
+    },
+    details: {
+      description: {
+        en: 'Given the head of a singly linked list, return true if following the next pointers eventually revisits a node (the list has a cycle), otherwise false. Use O(1) extra memory.',
+        he: 'נתון ראש של רשימה מקושרת חד-כיוונית. החזירו true אם מעקב אחרי מצביעי next מגיע שוב לצומת שכבר ביקרנו בו (יש מעגל), אחרת false. השתמשו בזיכרון נוסף של O(1).',
+      },
+      examples: [
+        {
+          input: 'head = 3 -> 2 -> 0 -> -4, and the next of -4 points back to 2',
+          output: 'true',
+        },
+        {
+          input: 'head = 1 -> 2, and the next of 2 is null',
+          output: 'false',
+        },
+      ],
     },
     topicId: 'algorithms',
     roleIds: ['software', 'embedded', 'verification', 'student'],
@@ -3565,6 +3806,26 @@ bool hasCycle(Node* head) {
   {
     id: 'q-top-k-frequent',
     text: { en: 'Return the k most frequent elements of an array.', he: 'החזירו את k האיברים השכיחים ביותר במערך.' },
+    details: {
+      description: {
+        en: 'Given an integer array nums and an integer k, return the k elements that appear most often. The answer may be returned in any order.',
+        he: 'נתונים מערך של מספרים שלמים nums ומספר k. החזירו את k האיברים שמופיעים הכי הרבה פעמים. אפשר להחזיר את התשובה בכל סדר.',
+      },
+      examples: [
+        {
+          input: 'nums = [1, 1, 1, 2, 2, 3], k = 2',
+          output: '[1, 2]',
+        },
+        {
+          input: 'nums = [4], k = 1',
+          output: '[4]',
+        },
+      ],
+      constraints: [
+        { en: 'k is between 1 and the number of distinct elements, and the answer is unique', he: 'k הוא בין 1 למספר האיברים השונים, והתשובה יחידה' },
+        { en: 'Aim for better than O(n log n)', he: 'שאפו לסיבוכיות טובה מ-O(n log n)' },
+      ],
+    },
     topicId: 'algorithms',
     roleIds: ['software', 'backend', 'data', 'verification'],
     type: 'coding',
@@ -3624,6 +3885,22 @@ std::vector<int> topKFrequent(const std::vector<int>& nums, int k) {
     text: {
       en: 'Given a log file, count the ERROR lines per hour and print the busiest hour.',
       he: 'בהינתן קובץ לוג, ספרו את שורות ה-ERROR לפי שעה והדפיסו את השעה העמוסה ביותר.',
+    },
+    details: {
+      description: {
+        en: 'Each line of a log file starts with a timestamp such as 2024-03-01 14:23:51, followed by a level (INFO, WARN, ERROR) and a message. Count how many ERROR lines fall in each hour of the day and print the hour with the most errors.',
+        he: 'כל שורה בקובץ לוג מתחילה בחותמת זמן כמו 2024-03-01 14:23:51, אחריה רמה (INFO, WARN, ERROR) והודעה. ספרו כמה שורות ERROR יש בכל שעה ביום והדפיסו את השעה עם הכי הרבה שגיאות.',
+      },
+      rules: [
+        { en: 'The file may be larger than memory: read it line by line.', he: 'הקובץ עשוי להיות גדול מהזיכרון: קראו אותו שורה אחרי שורה.' },
+      ],
+      examples: [
+        {
+          input: '2024-03-01 14:03:10 ERROR disk full\n2024-03-01 14:40:02 INFO retry ok\n2024-03-01 14:41:55 ERROR timeout\n2024-03-01 15:02:00 ERROR timeout',
+          output: '14 (2 errors)',
+          explanation: { en: 'Hour 14 has two ERROR lines, hour 15 has one.', he: 'בשעה 14 יש שתי שורות ERROR, בשעה 15 אחת.' },
+        },
+      ],
     },
     topicId: 'python',
     roleIds: ['verification', 'qa', 'devops', 'data', 'sysadmin'],
@@ -4176,6 +4453,22 @@ Counter& instance() {
   {
     id: 'q-contains-duplicate',
     text: { en: 'Does an array contain any duplicate value?', he: 'האם במערך יש ערך שחוזר על עצמו?' },
+    details: {
+      description: {
+        en: 'Given an integer array nums, return true if any value appears at least twice, and false if every element is distinct.',
+        he: 'נתון מערך של מספרים שלמים nums. החזירו true אם ערך כלשהו מופיע לפחות פעמיים, ו-false אם כל האיברים שונים זה מזה.',
+      },
+      examples: [
+        {
+          input: 'nums = [1, 2, 3, 1]',
+          output: 'true',
+        },
+        {
+          input: 'nums = [1, 2, 3, 4]',
+          output: 'false',
+        },
+      ],
+    },
     topicId: 'algorithms',
     roleIds: ['software', 'backend', 'verification', 'qa', 'data', 'student', 'frontend'],
     type: 'coding',
@@ -4215,6 +4508,26 @@ bool containsDuplicate(const std::vector<int>& nums) {
   {
     id: 'q-valid-anagram',
     text: { en: 'Are two strings anagrams of each other?', he: 'האם שתי מחרוזות הן אנגרמות זו של זו?' },
+    details: {
+      description: {
+        en: 'Given two strings s and t, return true if t is an anagram of s: the same letters with the same counts, in any order.',
+        he: 'נתונות שתי מחרוזות s ו-t. החזירו true אם t היא אנגרמה של s: אותן אותיות באותן כמויות, בכל סדר.',
+      },
+      examples: [
+        {
+          input: 's = "anagram", t = "nagaram"',
+          output: 'true',
+        },
+        {
+          input: 's = "rat", t = "car"',
+          output: 'false',
+          explanation: { en: 'Different letters.', he: 'אותיות שונות.' },
+        },
+      ],
+      constraints: [
+        { en: 'Lowercase English letters only', he: 'אותיות אנגליות קטנות בלבד' },
+      ],
+    },
     topicId: 'algorithms',
     roleIds: ['software', 'backend', 'verification', 'qa', 'student', 'frontend'],
     type: 'coding',
@@ -4260,6 +4573,27 @@ bool isAnagram(const std::string& s, const std::string& t) {
   {
     id: 'q-max-subarray',
     text: { en: 'Find the contiguous subarray with the largest sum (Kadane).', he: 'מצאו את תת-המערך הרציף עם הסכום הגדול ביותר (Kadane).' },
+    details: {
+      description: {
+        en: 'Given an integer array nums (it may contain negative numbers), find the contiguous subarray with the largest sum and return that sum.',
+        he: 'נתון מערך של מספרים שלמים nums (יכול להכיל מספרים שליליים). מצאו את תת-המערך הרציף עם הסכום הגדול ביותר והחזירו את הסכום.',
+      },
+      examples: [
+        {
+          input: 'nums = [-2, 1, -3, 4, -1, 2, 1, -5, 4]',
+          output: '6',
+          explanation: { en: 'The subarray [4, -1, 2, 1] sums to 6.', he: 'תת-המערך [4, -1, 2, 1] מסתכם ל-6.' },
+        },
+        {
+          input: 'nums = [-3, -1, -2]',
+          output: '-1',
+          explanation: { en: 'When every number is negative, the best subarray is the single largest element.', he: 'כשכל המספרים שליליים, תת-המערך הטוב ביותר הוא האיבר הגדול ביותר לבדו.' },
+        },
+      ],
+      constraints: [
+        { en: 'At least one element; aim for O(n)', he: 'לפחות איבר אחד; שאפו ל-O(n)' },
+      ],
+    },
     topicId: 'algorithms',
     roleIds: ['software', 'backend', 'verification', 'data', 'student'],
     type: 'coding',
@@ -4309,7 +4643,31 @@ int maxSubArray(const std::vector<int>& nums) {
   },
   {
     id: 'q-buy-sell-stock',
-    text: { en: 'Best time to buy and sell a stock once: maximise the profit.', he: 'הזמן הטוב ביותר לקנות ולמכור מניה פעם אחת: הגדילו את הרווח למקסימום.' },
+    text: {
+      en: 'Buy and sell a stock once: find the maximum profit.',
+      he: 'קנייה ומכירה של מניה פעם אחת: מצאו את הרווח המקסימלי.',
+    },
+    details: {
+      description: {
+        en: 'prices[i] is the price of a stock on day i. Choose one day to buy and a later day to sell so that the profit is as large as possible, and return that profit. If no profit is possible, return 0.',
+        he: 'prices[i] הוא מחיר המניה ביום i. בחרו יום אחד לקנייה ויום מאוחר יותר למכירה כך שהרווח יהיה גדול ככל האפשר, והחזירו את הרווח. אם אי אפשר להרוויח, החזירו 0.',
+      },
+      rules: [
+        { en: 'You must buy before you sell, and only one transaction is allowed.', he: 'חייבים לקנות לפני שמוכרים, ומותרת עסקה אחת בלבד.' },
+      ],
+      examples: [
+        {
+          input: 'prices = [7, 1, 5, 3, 6, 4]',
+          output: '5',
+          explanation: { en: 'Buy on day 2 (price 1), sell on day 5 (price 6).', he: 'קונים ביום 2 (מחיר 1), מוכרים ביום 5 (מחיר 6).' },
+        },
+        {
+          input: 'prices = [7, 6, 4, 3, 1]',
+          output: '0',
+          explanation: { en: 'Prices only fall, so no transaction is made.', he: 'המחירים רק יורדים, ולכן לא מבצעים עסקה.' },
+        },
+      ],
+    },
     topicId: 'algorithms',
     roleIds: ['software', 'backend', 'verification', 'data', 'student', 'frontend'],
     type: 'coding',
@@ -4350,6 +4708,22 @@ int maxProfit(const std::vector<int>& prices) {
   {
     id: 'q-merge-sorted-lists',
     text: { en: 'Merge two sorted linked lists into one sorted list.', he: 'מזגו שתי רשימות מקושרות ממוינות לרשימה ממוינת אחת.' },
+    details: {
+      description: {
+        en: 'Given the heads of two sorted singly linked lists, merge them into one sorted list by splicing the existing nodes together, and return its head.',
+        he: 'נתונים ראשי שתי רשימות מקושרות חד-כיווניות ממוינות. מזגו אותן לרשימה ממוינת אחת על ידי חיבור הצמתים הקיימים, והחזירו את הראש שלה.',
+      },
+      examples: [
+        {
+          input: 'list1 = 1 -> 2 -> 4, list2 = 1 -> 3 -> 4',
+          output: '1 -> 1 -> 2 -> 3 -> 4 -> 4',
+        },
+        {
+          input: 'list1 = (empty), list2 = 0',
+          output: '0',
+        },
+      ],
+    },
     topicId: 'algorithms',
     roleIds: ['software', 'embedded', 'backend', 'verification', 'student'],
     type: 'coding',
@@ -4412,6 +4786,27 @@ struct Node* merge(struct Node* a, struct Node* b) {
   {
     id: 'q-climbing-stairs',
     text: { en: 'Climbing stairs: how many distinct ways to reach step n with steps of 1 or 2?', he: 'עלייה במדרגות: בכמה דרכים שונות אפשר להגיע למדרגה n בצעדים של 1 או 2?' },
+    details: {
+      description: {
+        en: 'A staircase has n steps. Each move climbs either 1 or 2 steps. In how many distinct ways can you reach the top?',
+        he: 'בגרם מדרגות יש n מדרגות. בכל צעד עולים מדרגה אחת או שתיים. בכמה דרכים שונות אפשר להגיע לראש המדרגות?',
+      },
+      examples: [
+        {
+          input: 'n = 2',
+          output: '2',
+          explanation: { en: '1+1 or 2.', he: '1+1 או 2.' },
+        },
+        {
+          input: 'n = 3',
+          output: '3',
+          explanation: { en: '1+1+1, 1+2, 2+1.', he: '1+1+1, 1+2, 2+1.' },
+        },
+      ],
+      constraints: [
+        { en: '1 ≤ n ≤ 45', he: '1 ≤ n ≤ 45' },
+      ],
+    },
     topicId: 'algorithms',
     roleIds: ['software', 'backend', 'verification', 'data', 'student', 'frontend'],
     type: 'coding',
@@ -4460,6 +4855,22 @@ struct Node* merge(struct Node* a, struct Node* b) {
   {
     id: 'q-max-depth-binary-tree',
     text: { en: 'Return the maximum depth of a binary tree.', he: 'החזירו את העומק המקסימלי של עץ בינארי.' },
+    details: {
+      description: {
+        en: 'Given the root of a binary tree, return its maximum depth: the number of nodes on the longest path from the root down to a leaf.',
+        he: 'נתון שורש של עץ בינארי. החזירו את העומק המקסימלי שלו: מספר הצמתים במסלול הארוך ביותר מהשורש ועד עלה.',
+      },
+      examples: [
+        {
+          input: 'root = [3, 9, 20, null, null, 15, 7]\n(3 has the children 9 and 20; 20 has the children 15 and 7)',
+          output: '3',
+        },
+        {
+          input: 'root = (empty tree)',
+          output: '0',
+        },
+      ],
+    },
     topicId: 'algorithms',
     roleIds: ['software', 'backend', 'verification', 'data', 'student'],
     type: 'coding',
@@ -4494,6 +4905,23 @@ int maxDepth(const TreeNode* root) {
   {
     id: 'q-validate-bst',
     text: { en: 'Check whether a binary tree is a valid binary search tree.', he: 'בדקו אם עץ בינארי הוא עץ חיפוש בינארי תקין.' },
+    details: {
+      description: {
+        en: 'Given the root of a binary tree, return true if it is a valid binary search tree: every node in the left subtree is strictly smaller than the node, every node in the right subtree is strictly larger, and both subtrees are themselves valid.',
+        he: 'נתון שורש של עץ בינארי. החזירו true אם זהו עץ חיפוש בינארי תקין: כל צומת בתת-העץ השמאלי קטן ממש מהצומת, כל צומת בתת-העץ הימני גדול ממש ממנו, ושני תתי-העצים תקינים בעצמם.',
+      },
+      examples: [
+        {
+          input: 'root = [2, 1, 3]',
+          output: 'true',
+        },
+        {
+          input: 'root = [5, 1, 4, null, null, 3, 6]\n(4 is the right child of 5 and has the children 3 and 6)',
+          output: 'false',
+          explanation: { en: '4 is in the right subtree of 5 but is smaller than 5. Comparing each node only with its direct children misses this.', he: '4 נמצא בתת-העץ הימני של 5 אבל קטן מ-5. השוואה של כל צומת רק עם הילדים הישירים שלו מפספסת את זה.' },
+        },
+      ],
+    },
     topicId: 'algorithms',
     roleIds: ['software', 'backend', 'student', 'data'],
     type: 'coding',
@@ -4534,6 +4962,19 @@ bool isValidBST(const TreeNode* root) { return isValid(root, LLONG_MIN, LLONG_MA
   {
     id: 'q-number-of-islands',
     text: { en: 'Count the islands in a grid of land (1) and water (0).', he: 'ספרו את האיים בגריד של יבשה (1) ומים (0).' },
+    details: {
+      description: {
+        en: 'Given an m x n grid of "1" (land) and "0" (water), count the islands. An island is a group of land cells connected horizontally or vertically; the grid is surrounded by water.',
+        he: 'נתון גריד בגודל m על n של "1" (יבשה) ו-"0" (מים). ספרו את האיים. אי הוא קבוצה של תאי יבשה המחוברים אופקית או אנכית; הגריד מוקף במים.',
+      },
+      examples: [
+        {
+          input: 'grid =\n1 1 0 0 0\n1 1 0 0 0\n0 0 1 0 0\n0 0 0 1 1',
+          output: '3',
+          explanation: { en: 'The block at the top left, the single cell in the middle and the pair at the bottom right. Diagonal cells do not connect.', he: 'הבלוק בפינה השמאלית-עליונה, התא הבודד באמצע והזוג בפינה הימנית-תחתונה. תאים באלכסון לא מחוברים.' },
+        },
+      ],
+    },
     topicId: 'algorithms',
     roleIds: ['software', 'backend', 'verification', 'data', 'student'],
     type: 'coding',
@@ -4589,7 +5030,28 @@ int numIslands(std::vector<std::vector<char>>& grid) {
   },
   {
     id: 'q-product-except-self',
-    text: { en: 'Product of array except self, without division.', he: 'מכפלת כל האיברים חוץ מהאיבר עצמו, בלי חילוק.' },
+    text: {
+      en: 'For every index, return the product of all the other elements, without division.',
+      he: 'לכל אינדקס, החזירו את מכפלת כל שאר האיברים, בלי להשתמש בחילוק.',
+    },
+    details: {
+      description: {
+        en: 'Given an integer array nums, return an array answer where answer[i] is the product of every element of nums except nums[i]. Do not use division, and aim for O(n) time.',
+        he: 'נתון מערך של מספרים שלמים nums. החזירו מערך answer שבו answer[i] הוא מכפלת כל איברי nums חוץ מ-nums[i]. אל תשתמשו בחילוק, ושאפו לזמן O(n).',
+      },
+      examples: [
+        {
+          input: 'nums = [1, 2, 3, 4]',
+          output: '[24, 12, 8, 6]',
+          explanation: { en: 'answer[0] = 2·3·4 = 24, answer[1] = 1·3·4 = 12, and so on.', he: 'answer[0] = 2·3·4 = 24, answer[1] = 1·3·4 = 12, וכן הלאה.' },
+        },
+        {
+          input: 'nums = [-1, 1, 0, -3, 3]',
+          output: '[0, 0, 9, 0, 0]',
+          explanation: { en: 'Only answer[2] skips the zero.', he: 'רק answer[2] מדלג על האפס.' },
+        },
+      ],
+    },
     topicId: 'algorithms',
     roleIds: ['software', 'backend', 'data', 'student'],
     type: 'coding',
@@ -4635,6 +5097,24 @@ std::vector<int> productExceptSelf(const std::vector<int>& nums) {
   {
     id: 'q-longest-substring-no-repeat',
     text: { en: 'Length of the longest substring without repeating characters.', he: 'אורך תת-המחרוזת הארוכה ביותר בלי תווים חוזרים.' },
+    details: {
+      description: {
+        en: 'Given a string s, return the length of the longest substring (contiguous characters) in which no character repeats.',
+        he: 'נתונה מחרוזת s. החזירו את האורך של תת-המחרוזת הארוכה ביותר (תווים רצופים) שבה אף תו לא חוזר.',
+      },
+      examples: [
+        {
+          input: 's = "abcabcbb"',
+          output: '3',
+          explanation: { en: '"abc" is the longest such substring.', he: '"abc" היא תת-המחרוזת הארוכה ביותר כזו.' },
+        },
+        {
+          input: 's = "pwwkew"',
+          output: '3',
+          explanation: { en: '"wke". Note that "pwke" is a subsequence, not a substring.', he: '"wke". שימו לב ש-"pwke" היא תת-סדרה, לא תת-מחרוזת.' },
+        },
+      ],
+    },
     topicId: 'algorithms',
     roleIds: ['software', 'backend', 'verification', 'data', 'student', 'frontend'],
     type: 'coding',
@@ -4681,6 +5161,21 @@ int lengthOfLongestSubstring(const std::string& s) {
   {
     id: 'q-group-anagrams',
     text: { en: 'Group the anagrams in a list of words.', he: 'קבצו יחד את האנגרמות ברשימת מילים.' },
+    details: {
+      description: {
+        en: 'Given a list of words, group the words that are anagrams of each other. Return the groups in any order.',
+        he: 'נתונה רשימת מילים. קבצו יחד מילים שהן אנגרמות זו של זו. החזירו את הקבוצות בכל סדר.',
+      },
+      examples: [
+        {
+          input: 'strs = ["eat", "tea", "tan", "ate", "nat", "bat"]',
+          output: '[["eat", "tea", "ate"], ["tan", "nat"], ["bat"]]',
+        },
+      ],
+      constraints: [
+        { en: 'Lowercase English letters; think about which key identifies a group', he: 'אותיות אנגליות קטנות; חשבו איזה מפתח מזהה קבוצה' },
+      ],
+    },
     topicId: 'algorithms',
     roleIds: ['software', 'backend', 'data', 'student'],
     type: 'coding',
@@ -4726,6 +5221,26 @@ std::vector<std::vector<std::string>> groupAnagrams(const std::vector<std::strin
   {
     id: 'q-kth-largest',
     text: { en: 'Find the k-th largest element in an unsorted array.', he: 'מצאו את האיבר ה-k הכי גדול במערך לא ממוין.' },
+    details: {
+      description: {
+        en: 'Given an unsorted integer array nums and an integer k, return the k-th largest element in sorted order (not the k-th distinct element).',
+        he: 'נתונים מערך לא ממוין של מספרים שלמים nums ומספר k. החזירו את האיבר ה-k בגודלו לפי סדר ממוין (לא האיבר ה-k השונה).',
+      },
+      examples: [
+        {
+          input: 'nums = [3, 2, 1, 5, 6, 4], k = 2',
+          output: '5',
+        },
+        {
+          input: 'nums = [3, 2, 3, 1, 2, 4, 5, 5, 6], k = 4',
+          output: '4',
+          explanation: { en: 'Sorted descending: 6, 5, 5, 4, ... so the 4th is 4.', he: 'בסדר יורד: 6, 5, 5, 4, ... ולכן הרביעי הוא 4.' },
+        },
+      ],
+      constraints: [
+        { en: 'Can you do better than sorting the whole array?', he: 'האם אפשר לעשות טוב יותר ממיון של כל המערך?' },
+      ],
+    },
     topicId: 'algorithms',
     roleIds: ['software', 'backend', 'data', 'student', 'verification'],
     type: 'coding',
@@ -4769,6 +5284,19 @@ int findKthLargest(const std::vector<int>& nums, int k) {
   {
     id: 'q-min-stack',
     text: { en: 'Design a stack whose getMin() runs in O(1).', he: 'תכננו מחסנית שבה getMin() רץ ב-O(1).' },
+    details: {
+      description: {
+        en: 'Design a stack that supports push, pop, top and getMin, where getMin returns the smallest element currently in the stack. Every operation must run in O(1).',
+        he: 'תכננו מחסנית שתומכת ב-push, pop, top ו-getMin, כאשר getMin מחזיר את האיבר הקטן ביותר שנמצא כרגע במחסנית. כל פעולה חייבת לרוץ ב-O(1).',
+      },
+      examples: [
+        {
+          input: 'push(-2); push(0); push(-3); getMin(); pop(); top(); getMin()',
+          output: 'getMin() = -3, top() = 0, getMin() = -2',
+          explanation: { en: 'After popping -3 the minimum goes back to -2, so a single "current minimum" variable is not enough.', he: 'אחרי הוצאת -3 המינימום חוזר להיות -2, ולכן משתנה יחיד של "המינימום הנוכחי" לא מספיק.' },
+        },
+      ],
+    },
     topicId: 'algorithms',
     roleIds: ['software', 'backend', 'embedded', 'student', 'verification'],
     type: 'coding',
@@ -4822,7 +5350,30 @@ public:
   },
   {
     id: 'q-missing-number',
-    text: { en: 'Find the missing number in an array containing 0..n with one number absent.', he: 'מצאו את המספר החסר במערך שמכיל את 0..n עם מספר אחד חסר.' },
+    text: {
+      en: 'Find the missing number: an array holds n distinct numbers from 0..n, one is absent.',
+      he: 'מצאו את המספר החסר: מערך עם n מספרים שונים מתוך 0..n, שאחד מהם חסר.',
+    },
+    details: {
+      description: {
+        en: 'Given an array nums containing n distinct numbers taken from the range 0..n, exactly one number of the range is missing. Return it.',
+        he: 'נתון מערך nums שמכיל n מספרים שונים מתוך הטווח 0..n. בדיוק מספר אחד מהטווח חסר. החזירו אותו.',
+      },
+      examples: [
+        {
+          input: 'nums = [3, 0, 1]',
+          output: '2',
+          explanation: { en: 'n = 3, so the range is 0..3 and 2 is absent.', he: 'n = 3, ולכן הטווח הוא 0..3 ו-2 חסר.' },
+        },
+        {
+          input: 'nums = [9, 6, 4, 2, 3, 5, 7, 0, 1]',
+          output: '8',
+        },
+      ],
+      constraints: [
+        { en: 'Aim for O(n) time and O(1) extra space', he: 'שאפו לזמן O(n) ולזיכרון נוסף O(1)' },
+      ],
+    },
     topicId: 'algorithms',
     roleIds: ['software', 'embedded', 'verification', 'qa', 'student'],
     type: 'coding',
@@ -4868,7 +5419,40 @@ int missingNumber(const std::vector<int>& nums) {
   },
   {
     id: 'q-search-rotated-array',
-    text: { en: 'Search a target in a sorted array that was rotated, in O(log n).', he: 'חפשו יעד במערך ממוין שעבר סיבוב, ב-O(log n).' },
+    text: {
+      en: 'Search in a rotated sorted array: return the index of a target in O(log n).',
+      he: 'חיפוש במערך ממוין שעבר סיבוב: החזירו את האינדקס של target ב-O(log n).',
+    },
+    details: {
+      description: {
+        en: 'An array of distinct integers was sorted in ascending order and then rotated at some unknown index: for example [1, 2, 4, 5, 7, 9, 12] became [7, 9, 12, 1, 2, 4, 5]. Given the rotated array nums and an integer target, return the index of target in nums, or -1 if it is not present. Your algorithm must run in O(log n).',
+        he: 'מערך של מספרים שלמים שונים היה ממוין בסדר עולה ואז עבר סיבוב באינדקס לא ידוע: למשל [1, 2, 4, 5, 7, 9, 12] הפך ל-[7, 9, 12, 1, 2, 4, 5]. נתונים המערך המסובב nums ומספר target. החזירו את האינדקס של target ב-nums, או -1 אם אינו קיים. האלגוריתם חייב לרוץ ב-O(log n).',
+      },
+      rules: [
+        { en: 'A plain scan of the array is O(n) and does not count: the point is to keep binary search working although the array is no longer sorted end to end.', he: 'מעבר פשוט על המערך הוא O(n) ולא נחשב: המטרה היא לשמור על חיפוש בינארי למרות שהמערך כבר לא ממוין מתחילתו ועד סופו.' },
+      ],
+      examples: [
+        {
+          input: 'nums = [7, 9, 12, 1, 2, 4, 5], target = 4',
+          output: '5',
+          explanation: { en: 'nums[5] = 4.', he: 'nums[5] = 4.' },
+        },
+        {
+          input: 'nums = [7, 9, 12, 1, 2, 4, 5], target = 3',
+          output: '-1',
+          explanation: { en: '3 is not in the array.', he: '3 לא נמצא במערך.' },
+        },
+        {
+          input: 'nums = [1, 2, 3], target = 3',
+          output: '2',
+          explanation: { en: 'A rotation by zero positions is allowed: the array may still be fully sorted.', he: 'סיבוב ב-0 מקומות מותר: המערך יכול להיות ממוין לגמרי.' },
+        },
+      ],
+      constraints: [
+        { en: 'All values are distinct', he: 'כל הערכים שונים זה מזה' },
+        { en: '1 ≤ nums.length ≤ 5000', he: '1 ≤ nums.length ≤ 5000' },
+      ],
+    },
     topicId: 'algorithms',
     roleIds: ['software', 'backend', 'student', 'verification'],
     type: 'coding',
@@ -4922,7 +5506,35 @@ int search(const std::vector<int>& nums, int target) {
   },
   {
     id: 'q-coin-change',
-    text: { en: 'Coin change: the fewest coins that make up an amount.', he: 'עודף במטבעות: המספר הקטן ביותר של מטבעות שמרכיבים סכום.' },
+    text: {
+      en: 'Coin change: the fewest coins that add up to a given amount.',
+      he: 'עודף במטבעות: מספר המטבעות הקטן ביותר שמרכיב סכום נתון.',
+    },
+    details: {
+      description: {
+        en: 'You are given coin denominations coins (unlimited supply of each) and an integer amount. Return the fewest coins needed to make up exactly that amount, or -1 if it cannot be done.',
+        he: 'נתונים ערכי מטבעות coins (כמות בלתי מוגבלת מכל סוג) ומספר שלם amount. החזירו את מספר המטבעות הקטן ביותר שמרכיב בדיוק את הסכום, או -1 אם זה בלתי אפשרי.',
+      },
+      rules: [
+        { en: 'Greedy (always take the largest coin) fails, e.g. coins = [1, 3, 4], amount = 6: greedy gives 4+1+1 but 3+3 is better.', he: 'גישה חמדנית (תמיד לקחת את המטבע הגדול) נכשלת, למשל coins = [1, 3, 4], amount = 6: החמדן נותן 4+1+1 אבל 3+3 עדיף.' },
+      ],
+      examples: [
+        {
+          input: 'coins = [1, 2, 5], amount = 11',
+          output: '3',
+          explanation: { en: '11 = 5 + 5 + 1.', he: '11 = 5 + 5 + 1.' },
+        },
+        {
+          input: 'coins = [2], amount = 3',
+          output: '-1',
+          explanation: { en: 'An odd amount cannot be made from 2s.', he: 'אי אפשר להרכיב סכום אי-זוגי ממטבעות של 2.' },
+        },
+        {
+          input: 'coins = [1], amount = 0',
+          output: '0',
+        },
+      ],
+    },
     topicId: 'algorithms',
     roleIds: ['software', 'backend', 'data', 'student'],
     type: 'coding',

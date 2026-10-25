@@ -1,4 +1,5 @@
 import { cn } from '../lib/utils'
+import { BidiText } from './BidiText'
 
 type Direction = 'auto' | 'rtl' | 'ltr'
 
@@ -47,7 +48,9 @@ export function AnswerText({ text, dir, className }: AnswerTextProps) {
   return (
     <div dir={dir} className={cn('space-y-2', className)}>
       {paragraphs.map((paragraph, index) => (
-        <p key={index}>{paragraph}</p>
+        <p key={index}>
+          <BidiText text={paragraph} />
+        </p>
       ))}
     </div>
   )
