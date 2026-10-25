@@ -7,6 +7,7 @@ import { FLASHCARD_KINDS, type Flashcard, type FlashcardDraft, type FlashcardKin
 import { Button } from './ui/Button'
 import { Field, Select, Textarea } from './ui/Field'
 import { Modal } from './ui/Modal'
+import { BidiText } from './BidiText'
 
 interface FlashcardModalProps {
   open: boolean
@@ -108,7 +109,7 @@ function FlashcardForm({ source, isEdit, onSave, onClose }: FlashcardFormProps) 
           <option value="">{t('study.noQuestion')}</option>
           {questions.map((question) => (
             <option key={question.id} value={question.id}>
-              {localize(question.text)}
+              <BidiText text={localize(question.text)} />
             </option>
           ))}
         </Select>

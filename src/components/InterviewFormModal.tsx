@@ -22,6 +22,7 @@ import { Badge } from './ui/Badge'
 import { Button } from './ui/Button'
 import { Field, Input, Select, Textarea } from './ui/Field'
 import { Modal } from './ui/Modal'
+import { BidiText } from './BidiText'
 
 interface InterviewFormModalProps {
   open: boolean
@@ -236,7 +237,7 @@ function InterviewForm({
             {selected.map((question) => (
               <li key={question.id} className={rowClass}>
                 <span dir="auto" className="min-w-0 flex-1 rtl:text-right">
-                  {localize(question.text)}
+                  <BidiText text={localize(question.text)} />
                 </span>
                 <button
                   type="button"
@@ -297,7 +298,7 @@ function InterviewForm({
                   >
                     <Plus aria-hidden className="size-4 shrink-0 text-brand-600" />
                     <span dir="auto" className="min-w-0 flex-1 truncate rtl:text-right">
-                      {localize(question.text)}
+                      <BidiText text={localize(question.text)} />
                     </span>
                   </button>
                 </li>

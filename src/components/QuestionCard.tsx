@@ -7,6 +7,7 @@ import { useUserData } from '../state/user-data-context'
 import { LastRatingBadge } from './LastRatingBadge'
 import { Badge } from './ui/Badge'
 import { CardLink } from './ui/Card'
+import { BidiText } from './BidiText'
 
 const difficultyDot: Record<Difficulty, string> = {
   easy: 'bg-emerald-500',
@@ -85,7 +86,7 @@ export function QuestionCard({ question, topic, className }: QuestionCardProps) 
 
       {/* Seed content follows the UI language; text the user typed is detected by the browser. */}
       <p dir={textDirection(question.custom, language)} className="mt-3 font-medium leading-snug text-slate-900 rtl:text-right dark:text-slate-100">
-        {localize(question.text)}
+        <BidiText text={localize(question.text)} />
       </p>
 
       <dl className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-slate-500 dark:text-slate-400">

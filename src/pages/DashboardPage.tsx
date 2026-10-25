@@ -26,6 +26,7 @@ import { useTranslation } from '../i18n/useTranslation'
 import { cn, describeDays, formatDate, getGreetingKey, textDirection } from '../lib/utils'
 import { usePracticeContext } from '../state/usePracticeContext'
 import { useUserData } from '../state/user-data-context'
+import { BidiText } from '../components/BidiText'
 
 interface StatCardProps {
   icon: ReactNode
@@ -235,7 +236,7 @@ export function DashboardPage() {
                       dir={textDirection(question.custom, language)}
                       className="min-w-0 flex-1 truncate text-sm font-medium text-slate-800 hover:text-brand-600 rtl:text-right dark:text-slate-200 dark:hover:text-brand-400"
                     >
-                      {localize(question.text)}
+                      <BidiText text={localize(question.text)} />
                     </Link>
                     <LastRatingBadge questionId={question.id} />
                   </li>

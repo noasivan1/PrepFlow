@@ -62,6 +62,7 @@ import {
   type TargetInterview,
   type Topic,
 } from '../types'
+import { BidiText } from '../components/BidiText'
 
 const planIcons: Record<PracticePlanId, LucideIcon> = {
   quick: Zap,
@@ -431,7 +432,7 @@ function PredictionCard({ prediction, context, topics, onStart }: PredictionCard
                     dir={textDirection(question.custom, language)}
                     className="min-w-0 flex-1 truncate text-sm font-medium text-slate-800 hover:text-brand-600 rtl:text-right dark:text-slate-200 dark:hover:text-brand-400"
                   >
-                    {localize(question.text)}
+                    <BidiText text={localize(question.text)} />
                   </Link>
                   {topic && (
                     <Badge tone={topic.color} className="max-sm:hidden">
@@ -819,7 +820,7 @@ function PracticeSession({ planId, seed, onExit, onNewSet }: PracticeSessionProp
             title.length > 80 ? 'text-xl sm:text-2xl' : 'text-2xl sm:text-3xl',
           )}
         >
-          {title}
+          <BidiText text={title} />
         </h2>
 
         {current.details && (

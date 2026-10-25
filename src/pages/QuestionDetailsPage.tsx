@@ -21,6 +21,7 @@ import { cn, formatDate, textDirection } from '../lib/utils'
 import { useCatalog } from '../state/catalog-context'
 import { useUserData } from '../state/user-data-context'
 import type { Difficulty, FlashcardDraft } from '../types'
+import { BidiText } from '../components/BidiText'
 
 const difficultyDot: Record<Difficulty, string> = {
   easy: 'bg-emerald-500',
@@ -117,7 +118,7 @@ export function QuestionDetailsPage() {
           dir={textDirection(question.custom, language)}
           className="mt-5 text-2xl leading-tight font-semibold tracking-tight text-slate-900 sm:text-3xl rtl:text-right dark:text-slate-100"
         >
-          {localize(question.text)}
+          <BidiText text={localize(question.text)} />
         </h1>
 
         {question.details && (
