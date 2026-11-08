@@ -15,7 +15,9 @@ import type { Client, InValue } from '@libsql/client'
  */
 
 const here = dirname(fileURLToPath(import.meta.url))
-const remoteUrl = process.env.TURSO_DATABASE_URL
+// Trimmed: a value pasted into a hosting dashboard easily carries a trailing tab or newline, and
+// 'https://...turso.io	' is an invalid URL that takes the whole function down.
+const remoteUrl = process.env.TURSO_DATABASE_URL?.trim() || undefined
 const filePath = (process.env.PREPFLOW_DB ?? join(here, 'data', 'prepflow.db')).replace(/\\/g, '/')
 
 export const isRemote = Boolean(remoteUrl)
@@ -30,7 +32,7 @@ async function openClient(): Promise<Client> {
   if (remoteUrl) {
     const { createClient } = await import('@libsql/client/web')
     // A libsql:// URL selects a WebSocket; one HTTP request per statement suits a function that lives for a single request.
-    return createClient({ url: remoteUrl.replace(/^libsql:/, 'https:'), authToken: process.env.TURSO_AUTH_TOKEN })
+    return createClient({ url: remoteUrl.replace(/^libsql:/, 'https:'), authToken: process.env.TURSO_AUTH_TOKEN?.trim() })
   }
   mkdirSync(dirname(filePath), { recursive: true })
   const { createClient } = await import('@libsql/client')

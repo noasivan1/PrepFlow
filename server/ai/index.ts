@@ -1,6 +1,6 @@
 import { anthropicProvider } from './anthropic.ts'
 import { geminiProvider } from './gemini.ts'
-import { AiNotConfiguredError, isConfigured, type ProviderName, type TextProvider } from './provider.ts'
+import { AiNotConfiguredError, apiKey, isConfigured, type ProviderName, type TextProvider } from './provider.ts'
 import { stubProvider } from './stub.ts'
 
 export { AiNotConfiguredError } from './provider.ts'
@@ -18,7 +18,7 @@ export function getProvider(prefer: ProviderName): TextProvider {
   const order: ProviderName[] = prefer === 'gemini' ? ['gemini', 'anthropic'] : ['anthropic', 'gemini']
   for (const name of order) {
     if (!isConfigured(name)) continue
-    return name === 'gemini' ? geminiProvider(process.env.GEMINI_API_KEY ?? '') : anthropicProvider(process.env.ANTHROPIC_API_KEY ?? '')
+    return name === 'gemini' ? geminiProvider(apiKey('gemini')) : anthropicProvider(apiKey('anthropic'))
   }
   throw new AiNotConfiguredError()
 }

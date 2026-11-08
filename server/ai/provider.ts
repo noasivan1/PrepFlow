@@ -32,8 +32,13 @@ export class AiNotConfiguredError extends Error {
   }
 }
 
+/** The vendor key from the environment, trimmed: a value pasted into a dashboard often ends in a tab or newline. */
+export function apiKey(name: ProviderName): string {
+  return (name === 'gemini' ? process.env.GEMINI_API_KEY : process.env.ANTHROPIC_API_KEY)?.trim() ?? ''
+}
+
 export function isConfigured(name: ProviderName): boolean {
-  return name === 'gemini' ? Boolean(process.env.GEMINI_API_KEY) : Boolean(process.env.ANTHROPIC_API_KEY)
+  return apiKey(name) !== ''
 }
 
 /** Pulls the first JSON object or array out of a model reply, tolerating prose or code fences around it. */
