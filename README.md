@@ -219,9 +219,11 @@ shows "Previous / Current". Limits: 4000 characters per answer, 30 checks per us
 reply (`evaluate.ts`, `questions.ts`); a provider (`gemini.ts`, `anthropic.ts`) just turns a
 prompt into text; `index.ts` picks one from the environment. Answer checking prefers **Gemini**
 (`GEMINI_API_KEY`, model `GEMINI_MODEL`, default `gemini-3.8-flash`); question generation prefers
-Anthropic (`ANTHROPIC_API_KEY`) and falls back to Gemini. When Google answers 503 (high demand) or 429,
-the Gemini provider retries once and then tries `gemini-3.7-flash` and `gemini-3.5-flash` before giving
-up. Keys are read server-side only; without any
+Anthropic (`ANTHROPIC_API_KEY`) and falls back to Gemini. Google sometimes answers 503 (high demand) or
+429 on one model, or does not answer at all; the Gemini provider gives each model a short timeout (about
+20 s for grading), retries the configured model once after a quick refusal, then tries `gemini-3.7-flash`
+and `gemini-3.5-flash`, all within a 50 s budget that fits the serverless limit. A model that failed is
+tried last for five minutes, so the following checks are fast. Keys are read server-side only; without any
 key the UI explains what to set instead of failing. `PREPFLOW_AI=stub` returns canned replies and
 `PREPFLOW_AI=fail` always errors, for development and tests.
 
