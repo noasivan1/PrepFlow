@@ -1,7 +1,7 @@
 import { mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { createClient, type InValue } from '@libsql/client'
+import type { Client, InValue } from '@libsql/client'
 
 /**
  * One database client for every environment, through libSQL (SQLite-compatible):
@@ -17,13 +17,27 @@ import { createClient, type InValue } from '@libsql/client'
 const here = dirname(fileURLToPath(import.meta.url))
 const remoteUrl = process.env.TURSO_DATABASE_URL
 const filePath = (process.env.PREPFLOW_DB ?? join(here, 'data', 'prepflow.db')).replace(/\\/g, '/')
-if (!remoteUrl) mkdirSync(dirname(filePath), { recursive: true })
-
-export const db = createClient(
-  remoteUrl ? { url: remoteUrl, authToken: process.env.TURSO_AUTH_TOKEN } : { url: `file:${filePath}` },
-)
 
 export const isRemote = Boolean(remoteUrl)
+
+/**
+ * The remote client is the package's "web" build: plain HTTP, nothing native. The default
+ * build also loads the bundled SQLite engine, a platform-specific binary that serverless
+ * bundlers cannot trace, so importing it on Vercel crashes the function before the first
+ * request. That build is loaded only for the local file database.
+ */
+async function openClient(): Promise<Client> {
+  if (remoteUrl) {
+    const { createClient } = await import('@libsql/client/web')
+    // A libsql:// URL selects a WebSocket; one HTTP request per statement suits a function that lives for a single request.
+    return createClient({ url: remoteUrl.replace(/^libsql:/, 'https:'), authToken: process.env.TURSO_AUTH_TOKEN })
+  }
+  mkdirSync(dirname(filePath), { recursive: true })
+  const { createClient } = await import('@libsql/client')
+  return createClient({ url: `file:${filePath}` })
+}
+
+export const db: Client = await openClient()
 
 const SCHEMA = `
   CREATE TABLE IF NOT EXISTS users (
@@ -139,6 +153,9 @@ async function withRetry<T>(statement: () => Promise<T>, attempts = 5): Promise<
 
 /** Resolves once the schema exists. Awaited before the server listens / before the first request. */
 export const ready: Promise<void> = initialise()
+// Whoever awaits `ready` reports a failure (start-up, or the first request as a 500). Without
+// this handler a rejection before that point would be unhandled and take the whole process down.
+ready.catch(() => {})
 
 export type Args = InValue[]
 

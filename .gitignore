@@ -32,3 +32,5 @@ server/data/
 # Any other env flavour (.env.local, .env.production, ...) stays out too; only the example is tracked
 .env.*
 !.env.example
+
+.vercel
