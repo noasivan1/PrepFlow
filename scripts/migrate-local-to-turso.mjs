@@ -1,20 +1,28 @@
 #!/usr/bin/env node
 /**
- * Copies one account's personal data from the local SQLite file (server/data/prepflow.db) into
- * the hosted Turso database: settings, notes, ratings, cards, targets, interviews, own questions
- * and answer attempts. Accounts and passwords are NOT copied: the destination account must
- * already exist (register on the site first); both accounts are matched by email.
+ * Copies one account from the local SQLite file (server/data/prepflow.db) into the hosted Turso
+ * database, so you can carry on there from where you left off on this computer: the account
+ * itself (email, name, password, so the same login works), settings, notes, ratings, cards,
+ * targets, interviews, own questions and answer attempts.
+ *
+ * The hosted account is matched by email. If none exists yet it is created from the local row;
+ * when the hosted database has no accounts at all, the copied account becomes the admin, exactly
+ * as the first registration would. Re-running is safe: rows that already exist on the destination
+ * are left alone (settings are overwritten with the local ones).
  *
  * Credentials come from .env.turso.local in the project root (git-ignored) or the environment:
  *   TURSO_DATABASE_URL=libsql://...turso.io
  *   TURSO_AUTH_TOKEN=...
  *
  * Usage:
- *   node scripts/migrate-local-to-turso.mjs [--from <local email>] [--to <hosted email>] [--dry-run]
+ *   node scripts/migrate-local-to-turso.mjs [--from <local email>] [--to <hosted email>]
+ *                                           [--admin] [--dry-run] [--to-file <path>]
  *
- * Without --from, the only local account that is not a demo or test user is used; without --to,
- * the only hosted account. Re-running is safe: rows that already exist on the destination are
- * left alone (settings are overwritten with the local ones).
+ *   --from      which local account to copy; default: the only account that is not a demo or test user
+ *   --to        an existing hosted account to receive the data (when its email differs from the local one)
+ *   --admin     give the copied account the admin role even if the hosted database already has accounts
+ *   --dry-run   only report what would be copied
+ *   --to-file   rehearse against a local SQLite file instead of Turso (no credentials needed)
  */
 import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -31,42 +39,90 @@ const option = (name) => {
   return index >= 0 ? args[index + 1] : undefined
 }
 const dryRun = args.includes('--dry-run')
-
-const url = process.env.TURSO_DATABASE_URL?.trim()
-const authToken = process.env.TURSO_AUTH_TOKEN?.trim()
-if (!url || !authToken) {
-  console.error(`Missing TURSO_DATABASE_URL / TURSO_AUTH_TOKEN. Put them in ${credentialsFile} (one per line, KEY=value).`)
-  process.exit(1)
-}
+const forceAdmin = args.includes('--admin')
+const targetFile = option('--to-file')
 
 const localFile = fileURLToPath(new URL('server/data/prepflow.db', root)).replace(/\\/g, '/')
+if (!existsSync(localFile)) {
+  console.error(`Local database not found at ${localFile}.`)
+  process.exit(1)
+}
 const local = createFileClient({ url: `file:${localFile}` })
-const hosted = createWebClient({ url: url.replace(/^libsql:/, 'https:'), authToken })
+
+let hosted
+let destination
+if (targetFile) {
+  destination = `file ${targetFile}`
+  hosted = createFileClient({ url: `file:${targetFile.replace(/\\/g, '/')}` })
+} else {
+  const url = process.env.TURSO_DATABASE_URL?.trim()
+  const authToken = process.env.TURSO_AUTH_TOKEN?.trim()
+  if (!url || !authToken) {
+    console.error(`Missing TURSO_DATABASE_URL / TURSO_AUTH_TOKEN. Put them in ${credentialsFile} (one per line, KEY=value).`)
+    process.exit(1)
+  }
+  destination = url.replace(/^libsql:\/\//, '')
+  hosted = createWebClient({ url: url.replace(/^libsql:/, 'https:'), authToken })
+}
+
+// The server creates the tables on its first request; a destination without them has never been opened.
+const tables = new Set((await hosted.execute("SELECT name FROM sqlite_master WHERE type = 'table'")).rows.map((row) => String(row.name)))
+for (const table of ['users', 'settings', 'notes', 'ratings', 'cards', 'targets', 'interviews', 'questions', 'answer_attempts']) {
+  if (!tables.has(table)) {
+    console.error(`Destination has no table "${table}". Open the site once so the server creates the schema, then run again.`)
+    process.exit(1)
+  }
+}
 
 const DEMO_OR_TEST = /@example\.com$|^hagit/i
 
-async function pickUser(db, label, email) {
-  const rows = (await db.execute('SELECT id, email, name, role FROM users ORDER BY created_at')).rows
-  if (email) {
-    const user = rows.find((row) => String(row.email).toLowerCase() === email.toLowerCase())
-    if (!user) {
-      console.error(`${label}: no account with email ${email}. Accounts: ${rows.map((row) => row.email).join(', ') || '(none)'}`)
-      process.exit(1)
-    }
-    return user
-  }
-  const candidates = label === 'local' ? rows.filter((row) => !DEMO_OR_TEST.test(String(row.email))) : rows
-  if (candidates.length !== 1) {
-    const flag = label === 'local' ? '--from' : '--to'
-    const list = candidates.map((row) => row.email).join(', ') || '(none)'
-    console.error(`${label}: ${candidates.length === 0 ? 'no account found' : 'several accounts found'}; pass ${flag} <email>. Accounts: ${list}`)
-    process.exit(1)
-  }
-  return candidates[0]
+async function listUsers(db) {
+  return (await db.execute('SELECT id, email, name, role, password_hash, created_at FROM users ORDER BY created_at')).rows
 }
 
-const source = await pickUser(local, 'local', option('--from'))
-const target = await pickUser(hosted, 'hosted', option('--to'))
+function findByEmail(rows, email) {
+  return rows.find((row) => String(row.email).toLowerCase() === email.toLowerCase())
+}
+
+// Which local account to copy.
+const localUsers = await listUsers(local)
+let source
+if (option('--from')) {
+  source = findByEmail(localUsers, option('--from'))
+  if (!source) {
+    console.error(`local: no account with email ${option('--from')}. Accounts: ${localUsers.map((row) => row.email).join(', ') || '(none)'}`)
+    process.exit(1)
+  }
+} else {
+  const candidates = localUsers.filter((row) => !DEMO_OR_TEST.test(String(row.email)))
+  if (candidates.length !== 1) {
+    const list = candidates.map((row) => row.email).join(', ') || '(none)'
+    console.error(`local: ${candidates.length === 0 ? 'no account found' : 'several accounts found'}; pass --from <email>. Accounts: ${list}`)
+    process.exit(1)
+  }
+  source = candidates[0]
+}
+
+// Which hosted account receives the data: --to, else the same email, else a copy of the local account.
+const hostedUsers = await listUsers(hosted)
+let target
+let createAccount = false
+if (option('--to')) {
+  target = findByEmail(hostedUsers, option('--to'))
+  if (!target) {
+    console.error(`hosted: no account with email ${option('--to')}. Accounts: ${hostedUsers.map((row) => row.email).join(', ') || '(none)'}`)
+    process.exit(1)
+  }
+} else {
+  target = findByEmail(hostedUsers, String(source.email))
+  if (!target) {
+    createAccount = true
+    const role = hostedUsers.length === 0 || forceAdmin ? 'admin' : String(source.role)
+    target = { ...source, role }
+  }
+}
+if (forceAdmin && !createAccount && target.role !== 'admin') target = { ...target, role: 'admin' }
+const roleChanges = !createAccount && forceAdmin && findByEmail(hostedUsers, String(target.email))?.role !== 'admin'
 
 const byUser = async (sql) => (await local.execute({ sql, args: [source.id] })).rows
 const settings = (await byUser('SELECT data FROM settings WHERE user_id = ?'))[0]
@@ -80,8 +136,13 @@ const attempts = await byUser(
   'SELECT id, question_id, answer, score, verdict, feedback, created_at FROM answer_attempts WHERE user_id = ? ORDER BY created_at',
 )
 
-console.log(`From  local  ${source.email} (${source.name})`)
-console.log(`To    hosted ${target.email} (${target.name}, ${target.role})`)
+console.log(`From  local        ${source.email} (${source.name}, ${source.role})`)
+console.log(`To    ${destination}`)
+if (createAccount) {
+  console.log(`  account: will be CREATED as ${target.email} (${target.name}, ${target.role}) with the same password as on this computer`)
+} else {
+  console.log(`  account: existing ${target.email} (${target.name}, ${target.role})${roleChanges ? ' - role will be set to admin' : ''}`)
+}
 console.log(`  settings: ${settings ? 'yes' : 'no'}`)
 console.log(`  notes: ${notes.length}`)
 console.log(`  ratings: ${ratings.length}`)
@@ -93,6 +154,14 @@ if (dryRun) {
 }
 
 const statements = []
+if (createAccount) {
+  statements.push({
+    sql: 'INSERT INTO users (id, email, name, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+    args: [target.id, target.email, target.name, source.password_hash, target.role, source.created_at],
+  })
+} else if (roleChanges) {
+  statements.push({ sql: 'UPDATE users SET role = ? WHERE id = ?', args: ['admin', target.id] })
+}
 if (settings) {
   statements.push({
     sql: 'INSERT INTO settings (user_id, data) VALUES (?, ?) ON CONFLICT(user_id) DO UPDATE SET data = excluded.data',
@@ -132,7 +201,8 @@ for (const attempt of attempts) {
 await hosted.batch(statements, 'write')
 console.log(`Wrote ${statements.length} statements in one transaction.`)
 
-console.log('Hosted account now holds:')
+const account = (await hosted.execute({ sql: 'SELECT email, name, role FROM users WHERE id = ?', args: [target.id] })).rows[0]
+console.log(`Destination account: ${account.email} (${account.name}, ${account.role}) now holds:`)
 for (const table of ['notes', 'ratings', 'cards', 'targets', 'interviews', 'questions', 'answer_attempts']) {
   const row = (await hosted.execute({ sql: `SELECT COUNT(*) AS n FROM ${table} WHERE user_id = ?`, args: [target.id] })).rows[0]
   console.log(`  ${table}: ${row.n}`)
