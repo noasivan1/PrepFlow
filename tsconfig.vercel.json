@@ -3,14 +3,17 @@
   // Locally the server runs straight from the .ts sources. Vercel compiles TypeScript itself but
   // leaves the .ts import paths untouched, so the function could not find its modules; this emit
   // rewrites them to .js. Run with `npm run build:api`; server-dist/ is git-ignored.
+  //
+  // Deliberately not incremental: Vercel restores node_modules/ (and any build info inside it)
+  // from the previous build but not server-dist/, so an incremental tsc would skip every file
+  // it believes it already emitted and the function would start with half its modules missing.
   "extends": "./tsconfig.server.json",
   "compilerOptions": {
     "noEmit": false,
     "rewriteRelativeImportExtensions": true,
     "rootDir": ".",
     "outDir": "server-dist",
-    "incremental": true,
-    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.vercel.tsbuildinfo"
+    "incremental": false
   },
   "include": ["server", "src/types"]
 }
