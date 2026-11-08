@@ -22,7 +22,15 @@ interface AnswerWorkspaceProps {
   companyName?: string
 }
 
-type Status = { kind: 'idle' } | { kind: 'loading' } | { kind: 'error'; code: 'ai_not_configured' | 'ai_failed' | 'rate_limited' }
+type ErrorCode = 'ai_not_configured' | 'ai_busy' | 'ai_failed' | 'rate_limited'
+type Status = { kind: 'idle' } | { kind: 'loading' } | { kind: 'error'; code: ErrorCode }
+
+const ERROR_TEXT = {
+  ai_not_configured: 'answer.notConfigured',
+  ai_busy: 'answer.busy',
+  ai_failed: 'answer.failed',
+  rate_limited: 'answer.rateLimited',
+} as const satisfies Record<ErrorCode, string>
 
 const MAX_ANSWER_LENGTH = 4000
 
@@ -222,9 +230,8 @@ export function AnswerWorkspace({ question, revealed, onReveal, hint, roleName, 
       setStatus({ kind: 'idle' })
       onReveal() // the recommended answer follows the feedback
     } catch (error) {
-      const code =
-        error instanceof ApiError && (error.code === 'ai_not_configured' || error.code === 'rate_limited') ? error.code : 'ai_failed'
-      setStatus({ kind: 'error', code }) // the typed answer stays in the box
+      const known = error instanceof ApiError && error.code in ERROR_TEXT ? (error.code as ErrorCode) : 'ai_failed'
+      setStatus({ kind: 'error', code: known }) // the typed answer stays in the box
     }
   }
 
@@ -239,7 +246,7 @@ export function AnswerWorkspace({ question, revealed, onReveal, hint, roleName, 
     setHistoryOpen((open) => !open)
   }
 
-  const errorKey = status.kind === 'error' ? (`answer.${status.code === 'ai_not_configured' ? 'notConfigured' : status.code === 'rate_limited' ? 'rateLimited' : 'failed'}` as const) : null
+  const errorKey = status.kind === 'error' ? ERROR_TEXT[status.code] : null
 
   return (
     <section className="mt-6 rounded-2xl border border-brand-100 bg-brand-50/40 p-4 sm:p-5 dark:border-brand-500/20 dark:bg-brand-500/5">

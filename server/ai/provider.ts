@@ -32,6 +32,13 @@ export class AiNotConfiguredError extends Error {
   }
 }
 
+/** Every model the vendor offers refused or stayed silent within the time budget: temporary, and on their side. */
+export class AiBusyError extends Error {
+  constructor(cause?: unknown) {
+    super('The AI vendor is overloaded right now: every model refused or timed out', { cause })
+  }
+}
+
 /** The vendor key from the environment, trimmed: a value pasted into a dashboard often ends in a tab or newline. */
 export function apiKey(name: ProviderName): string {
   return (name === 'gemini' ? process.env.GEMINI_API_KEY : process.env.ANTHROPIC_API_KEY)?.trim() ?? ''

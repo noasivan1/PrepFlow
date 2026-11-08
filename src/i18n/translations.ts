@@ -531,6 +531,7 @@ export const en = {
   'ai.likelihood.medium': 'Possible',
   'ai.notConfigured': 'The AI helper is not set up yet: add GEMINI_API_KEY (or ANTHROPIC_API_KEY) to a .env file in the project folder (see .env.example) and restart npm run dev.',
   'ai.failed': 'Could not generate questions right now. Try again in a moment.',
+  'ai.busy': 'The AI service is overloaded right now. This is temporary and on the provider\'s side; try again in a minute.',
   'ai.needContext': 'Add an upcoming interview or pick a role first.',
   'ai.model': 'Generated with {model}. Check before you trust.',
   'practice.sessionsTitle': 'Tailored to this interview',
@@ -576,6 +577,7 @@ export const en = {
   'answer.yourAnswer': 'Your answer',
   'answer.notConfigured': 'Answer checking is not set up yet: add GEMINI_API_KEY to the .env file (see .env.example) and restart npm run dev. Your answer is still in the box.',
   'answer.failed': 'Could not check the answer right now. Your text is still here; try again in a moment.',
+  'answer.busy': 'The AI service is overloaded right now. This is temporary and on the provider\'s side; your text is still here, try again in a minute.',
   'answer.rateLimited': 'You have checked many answers this hour. Take a short break and try again later.',
 } as const
 
@@ -1099,6 +1101,7 @@ export const he: Record<TranslationKey, string> = {
   'ai.likelihood.medium': 'אפשרי',
   'ai.notConfigured': 'עוזר ה-AI עוד לא מוגדר: הוסיפו GEMINI_API_KEY (או ANTHROPIC_API_KEY) לקובץ .env בתיקיית הפרויקט (ראו .env.example) והריצו מחדש npm run dev.',
   'ai.failed': 'לא הצלחנו ליצור שאלות כרגע. נסו שוב עוד רגע.',
+  'ai.busy': 'שירות הבינה המלאכותית עמוס כרגע. זו תקלה זמנית אצל הספק; נסו שוב בעוד דקה.',
   'ai.needContext': 'הוסיפו ראיון קרוב או בחרו תפקיד קודם.',
   'ai.model': 'נוצר עם {model}. בדקו לפני שאתם מאמינים.',
   'practice.sessionsTitle': 'מותאם לראיון הזה',
@@ -1144,6 +1147,7 @@ export const he: Record<TranslationKey, string> = {
   'answer.yourAnswer': 'התשובה שלך',
   'answer.notConfigured': 'בדיקת התשובות עוד לא מוגדרת: הוסיפו GEMINI_API_KEY לקובץ .env (ראו .env.example) והריצו מחדש npm run dev. התשובה שלך נשארה בתיבה.',
   'answer.failed': 'לא הצלחנו לבדוק את התשובה כרגע. הטקסט נשאר; נסו שוב עוד רגע.',
+  'answer.busy': 'שירות הבינה המלאכותית עמוס כרגע. זו תקלה זמנית אצל הספק; הטקסט נשאר, נסו שוב בעוד דקה.',
   'answer.rateLimited': 'בדקת הרבה תשובות בשעה האחרונה. קחו הפסקה קצרה ונסו שוב מאוחר יותר.',
 }
 

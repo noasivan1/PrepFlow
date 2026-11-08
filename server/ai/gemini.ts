@@ -1,8 +1,8 @@
-import type { CompletionRequest, TextProvider } from './provider.ts'
+import { AiBusyError, type CompletionRequest, type TextProvider } from './provider.ts'
 
 const DEFAULT_MODEL = 'gemini-3.8-flash'
-/** Tried in order when the configured model is overloaded (503), rate limited (429) or silent. */
-const FALLBACK_MODELS = ['gemini-3.7-flash', 'gemini-3.5-flash']
+/** Tried in order, best first, when a model is overloaded (503), rate limited (429) or silent. */
+const FALLBACK_MODELS = ['gemini-3.7-flash', 'gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3.5-flash-lite']
 const RETRYABLE_STATUSES = new Set([429, 503])
 const RETRY_DELAY_MS = 1500
 /** A same-model retry only pays off after a quick refusal; a slow one means the model is struggling. */
@@ -14,6 +14,8 @@ const QUICK_FAILURE_MS = 5_000
 const TOTAL_BUDGET_MS = 50_000
 /** With less time than this left, another attempt cannot finish. */
 const MIN_ATTEMPT_MS = 3_000
+/** Pause before going over all the models again; demand spikes often pass within seconds. */
+const ROUND_DELAY_MS = 4_000
 /** A model that failed is tried last for this long, so the next calls go straight to one that answers. */
 const COOLDOWN_MS = 5 * 60_000
 
@@ -47,9 +49,8 @@ function isTransient(error: unknown): boolean {
   return (error instanceof GeminiHttpError && RETRYABLE_STATUSES.has(error.status)) || isTimeout(error)
 }
 
-function seconds(ms: number): string {
-  return `${(ms / 1000).toFixed(1)} s`
-}
+const seconds = (ms: number) => `${(ms / 1000).toFixed(1)} s`
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 /** Gemini Developer API (generateContent). The key travels in a header, never in the URL or the client. */
 export function geminiProvider(apiKey: string): TextProvider {
@@ -86,46 +87,54 @@ export function geminiProvider(apiKey: string): TextProvider {
     name: 'gemini',
     model,
     /**
-     * Google answers 503 "high demand" for spells on a single model, and sometimes a model
-     * simply never answers. Each attempt gets a short timeout; the configured model gets one
-     * retry after a quick refusal; then the fallbacks are tried in order, all within one budget
-     * that fits the serverless limit. A model that failed goes to the back of the line for a while.
+     * Google answers 503 "high demand" for spells on one model or several, and sometimes a model
+     * never answers. Each attempt gets a short timeout; the configured model gets one retry after
+     * a quick refusal; then the fallbacks are tried in order. If every model refused, the whole
+     * round repeats after a short pause, as long as the budget allows. Models that failed go to
+     * the back of the line for a while, so the following calls start with one that answered.
      */
     async complete(request: CompletionRequest): Promise<string> {
       const deadline = Date.now() + TOTAL_BUDGET_MS
+      const timeLeft = () => deadline - Date.now()
       const cooled = (name: string) => (unavailableUntil.get(name) ?? 0) > Date.now()
       const order = [...candidates].sort((a, b) => Number(cooled(a)) - Number(cooled(b)))
-      let lastError: unknown = new Error('Gemini: no time left to try a model')
+      let lastError: unknown
 
-      for (const target of order) {
-        for (let attempt = 0; attempt < 2; attempt += 1) {
-          const remaining = deadline - Date.now()
-          if (remaining < MIN_ATTEMPT_MS) throw lastError
-          const started = Date.now()
-          try {
-            const text = await generate(target, request, attemptTimeout(request.maxTokens, remaining))
-            unavailableUntil.delete(target)
-            return text
-          } catch (error) {
-            if (!isTransient(error)) throw error
-            lastError = error
-            const elapsed = Date.now() - started
-            const reason = isTimeout(error)
-              ? `gave no answer in ${seconds(elapsed)}`
-              : `answered ${(error as GeminiHttpError).status} after ${seconds(elapsed)}`
-            // Only the configured model gets a second try, and only after a quick refusal.
-            if (attempt === 0 && target === model && !isTimeout(error) && elapsed < QUICK_FAILURE_MS) {
-              console.warn(`Gemini ${target} ${reason}; retrying`)
-              await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS))
-              continue
+      for (let round = 0; timeLeft() >= MIN_ATTEMPT_MS; round += 1) {
+        if (round > 0) {
+          if (timeLeft() < ROUND_DELAY_MS + MIN_ATTEMPT_MS) break
+          console.warn(`Gemini: every model refused; waiting ${ROUND_DELAY_MS / 1000} s before another round`)
+          await delay(ROUND_DELAY_MS)
+        }
+        for (const target of order) {
+          for (let attempt = 0; attempt < 2 && timeLeft() >= MIN_ATTEMPT_MS; attempt += 1) {
+            const started = Date.now()
+            try {
+              const text = await generate(target, request, attemptTimeout(request.maxTokens, timeLeft()))
+              unavailableUntil.delete(target)
+              return text
+            } catch (error) {
+              if (!isTransient(error)) throw error
+              lastError = error
+              const elapsed = Date.now() - started
+              const reason = isTimeout(error)
+                ? `gave no answer in ${seconds(elapsed)}`
+                : `answered ${(error as GeminiHttpError).status} after ${seconds(elapsed)}`
+              // Only the configured model gets a second try, and only after a quick refusal in the first round.
+              if (round === 0 && attempt === 0 && target === model && !isTimeout(error) && elapsed < QUICK_FAILURE_MS) {
+                console.warn(`Gemini ${target} ${reason}; retrying`)
+                await delay(RETRY_DELAY_MS)
+                continue
+              }
+              unavailableUntil.set(target, Date.now() + COOLDOWN_MS)
+              console.warn(`Gemini ${target} ${reason}; trying the next model`)
+              break
             }
-            unavailableUntil.set(target, Date.now() + COOLDOWN_MS)
-            console.warn(`Gemini ${target} ${reason}; trying the next model (${target} is skipped for ${COOLDOWN_MS / 60_000} min)`)
-            break
           }
         }
       }
-      throw lastError
+      console.warn(`Gemini: giving up after ${seconds(TOTAL_BUDGET_MS - timeLeft())}; failed models are tried last for ${COOLDOWN_MS / 60_000} min`)
+      throw new AiBusyError(lastError)
     },
   }
 }

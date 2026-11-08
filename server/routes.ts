@@ -24,7 +24,7 @@ import {
   type RatingEvent,
   type TargetInterview,
 } from '../src/types/index.ts'
-import { AiNotConfiguredError, evaluateAnswer, generateQuestions, type EvaluateInput, type GenerateInput } from './ai/index.ts'
+import { AiBusyError, AiNotConfiguredError, evaluateAnswer, generateQuestions, type EvaluateInput, type GenerateInput } from './ai/index.ts'
 import {
   clearSessionCookie,
   createSession,
@@ -595,6 +595,11 @@ router.post('/me/ai/evaluate-answer', async (req, res) => {
       res.status(503).json({ error: 'ai_not_configured' })
       return
     }
+    if (error instanceof AiBusyError) {
+      // The vendor is overloaded; the UI tells the user to try again in a minute instead of blaming the app.
+      res.status(503).json({ error: 'ai_busy' })
+      return
+    }
     console.error('Answer evaluation failed:', error)
     res.status(502).json({ error: 'ai_failed' })
     return
@@ -666,6 +671,11 @@ router.post('/me/ai/questions', async (req, res) => {
   } catch (error) {
     if (error instanceof AiNotConfiguredError) {
       res.status(503).json({ error: 'ai_not_configured' })
+      return
+    }
+    if (error instanceof AiBusyError) {
+      // The vendor is overloaded; the UI tells the user to try again in a minute instead of blaming the app.
+      res.status(503).json({ error: 'ai_busy' })
       return
     }
     console.error('AI generation failed:', error)

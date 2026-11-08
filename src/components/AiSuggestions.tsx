@@ -15,7 +15,7 @@ import { Card } from './ui/Card'
 type Status =
   | { kind: 'idle' }
   | { kind: 'loading' }
-  | { kind: 'error'; code: 'ai_not_configured' | 'ai_failed' }
+  | { kind: 'error'; code: 'ai_not_configured' | 'ai_busy' | 'ai_failed' }
   | { kind: 'done'; questions: GeneratedQuestion[]; model: string }
 
 interface GenerateResponse {
@@ -64,8 +64,8 @@ export function AiSuggestions({ context }: { context: PracticeContext }) {
       })
       setStatus({ kind: 'done', questions: result.questions, model: result.model })
     } catch (error) {
-      const notConfigured = error instanceof ApiError && error.code === 'ai_not_configured'
-      setStatus({ kind: 'error', code: notConfigured ? 'ai_not_configured' : 'ai_failed' })
+      const code = error instanceof ApiError && (error.code === 'ai_not_configured' || error.code === 'ai_busy') ? error.code : 'ai_failed'
+      setStatus({ kind: 'error', code })
     }
   }
 
@@ -133,7 +133,7 @@ export function AiSuggestions({ context }: { context: PracticeContext }) {
           role="alert"
           className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
         >
-          {t(status.code === 'ai_not_configured' ? 'ai.notConfigured' : 'ai.failed')}
+          {t(status.code === 'ai_not_configured' ? 'ai.notConfigured' : status.code === 'ai_busy' ? 'ai.busy' : 'ai.failed')}
         </p>
       )}
 

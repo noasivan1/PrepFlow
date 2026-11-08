@@ -3,7 +3,7 @@ import { geminiProvider } from './gemini.ts'
 import { AiNotConfiguredError, apiKey, isConfigured, type ProviderName, type TextProvider } from './provider.ts'
 import { stubProvider } from './stub.ts'
 
-export { AiNotConfiguredError } from './provider.ts'
+export { AiBusyError, AiNotConfiguredError } from './provider.ts'
 export { evaluateAnswer, type EvaluateInput } from './evaluate.ts'
 export { generateQuestions, type GenerateInput } from './questions.ts'
 
