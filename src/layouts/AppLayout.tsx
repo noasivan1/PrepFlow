@@ -12,8 +12,11 @@ import {
   LogOut,
   MessageCircle,
   Moon,
+  PanelLeftClose,
+  PanelLeftOpen,
   ShieldCheck,
   Sun,
+  Target,
   X,
   Zap,
   type LucideIcon,
@@ -50,17 +53,40 @@ const navItems: NavItem[] = [
   { to: '/study', labelKey: 'nav.study', icon: BookMarked, mobile: true },
 ]
 
+/** The desktop sidebar remembers whether it was collapsed to an icon rail, per device. */
+const SIDEBAR_STORAGE_KEY = 'prepflow.sidebar'
+
+function readSidebarCollapsed(): boolean {
+  try {
+    return localStorage.getItem(SIDEBAR_STORAGE_KEY) === 'collapsed'
+  } catch {
+    return false
+  }
+}
+
+function storeSidebarCollapsed(collapsed: boolean) {
+  try {
+    localStorage.setItem(SIDEBAR_STORAGE_KEY, collapsed ? 'collapsed' : 'expanded')
+  } catch {
+    // Private mode or blocked storage: the choice simply lasts for this visit.
+  }
+}
+
 const toggleButton =
   'inline-flex h-9 items-center justify-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100'
 
-function Logo() {
+function Logo({ compact = false }: { compact?: boolean }) {
   const { t } = useTranslation()
   return (
-    <div className="flex items-center gap-2.5">
+    <div className="flex items-center gap-2.5" title={compact ? t('app.name') : undefined}>
       <div className="flex size-9 items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm shadow-brand-600/30">
         <Zap aria-hidden className="size-5" />
       </div>
-      <span className="text-lg font-bold tracking-tight text-slate-900 dark:text-slate-100">{t('app.name')}</span>
+      {compact ? (
+        <span className="sr-only">{t('app.name')}</span>
+      ) : (
+        <span className="text-lg font-bold tracking-tight text-slate-900 dark:text-slate-100">{t('app.name')}</span>
+      )}
     </div>
   )
 }
@@ -78,7 +104,7 @@ function ThemeToggle() {
 }
 
 /** Shows the name of the *other* language, so the label tells you what you get. */
-function LanguageToggle() {
+function LanguageToggle({ compact = false }: { compact?: boolean }) {
   const { toggleLanguage } = useSettings()
   const { t } = useTranslation()
   return (
@@ -90,7 +116,7 @@ function LanguageToggle() {
       className={toggleButton}
     >
       <Languages aria-hidden className="size-4.5" />
-      <span>{t('language.other')}</span>
+      {!compact && <span>{t('language.other')}</span>}
     </button>
   )
 }
@@ -106,11 +132,41 @@ function LogoutButton({ compact = false }: { compact?: boolean }) {
   )
 }
 
+/** Collapses the desktop sidebar to an icon rail, or opens it again. */
+function SidebarToggle({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
+  const { t } = useTranslation()
+  const label = collapsed ? t('nav.expand') : t('nav.collapse')
+  return (
+    <button type="button" onClick={onToggle} aria-label={label} title={label} aria-expanded={!collapsed} className={toggleButton}>
+      {/* The icons draw a left panel; mirrored in Hebrew, where the sidebar sits on the right. */}
+      {collapsed ? (
+        <PanelLeftOpen aria-hidden className="size-4.5 rtl:-scale-x-100" />
+      ) : (
+        <PanelLeftClose aria-hidden className="size-4.5 rtl:-scale-x-100" />
+      )}
+    </button>
+  )
+}
+
 /** Current role in the sidebar, links to the role picker. */
-function RoleChip() {
+function RoleChip({ compact = false }: { compact?: boolean }) {
   const { roleId } = useUserData()
   const { t, localize } = useTranslation()
   const role = roleId ? getRole(roleId) : undefined
+  const roleLabel = role ? localize(role.name) : t('role.choose')
+  if (compact) {
+    const label = `${t('role.preparingFor')}: ${roleLabel}`
+    return (
+      <Link
+        to="/start"
+        aria-label={label}
+        title={label}
+        className="mx-auto flex size-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-brand-600 transition-colors hover:border-slate-300 dark:border-slate-800 dark:bg-slate-800/60 dark:text-brand-400 dark:hover:border-slate-700"
+      >
+        <Target aria-hidden className="size-5" />
+      </Link>
+    )
+  }
   return (
     <Link
       to="/start"
@@ -120,17 +176,27 @@ function RoleChip() {
         {t('role.preparingFor')}
       </p>
       <div className="mt-0.5 flex items-center justify-between gap-2">
-        <span className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
-          {role ? localize(role.name) : t('role.choose')}
-        </span>
+        <span className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{roleLabel}</span>
         <span className="shrink-0 text-xs font-medium text-brand-600 dark:text-brand-400">{t('role.change')}</span>
       </div>
     </Link>
   )
 }
 
-function StreakCard({ days }: { days: number }) {
+function StreakCard({ days, compact = false }: { days: number; compact?: boolean }) {
   const { t } = useTranslation()
+  if (compact) {
+    return (
+      <div
+        title={t('streak.days', { count: days })}
+        className="flex flex-col items-center gap-0.5 rounded-xl border border-amber-100 bg-amber-50/70 px-2 py-2 text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300"
+      >
+        <Flame aria-hidden className="size-4 text-amber-500" />
+        <span className="text-xs font-semibold tabular-nums">{days}</span>
+        <span className="sr-only">{t('streak.days', { count: days })}</span>
+      </div>
+    )
+  }
   return (
     <div className="rounded-xl border border-amber-100 bg-amber-50/70 p-3.5 dark:border-amber-500/20 dark:bg-amber-500/10">
       <div className="flex items-center gap-2 text-sm font-semibold text-amber-800 dark:text-amber-300">
@@ -166,6 +232,14 @@ export function AppLayout() {
   const { interviews } = useCatalog()
   const streakDays = useMemo(() => computeStreak(ratings), [ratings])
 
+  // Desktop sidebar: full width with labels, or a narrow icon rail that leaves more room for the page.
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(readSidebarCollapsed)
+  const toggleSidebar = () => {
+    const next = !sidebarCollapsed
+    storeSidebarCollapsed(next)
+    setSidebarCollapsed(next)
+  }
+
   // Assistant state lives here so the conversation survives navigation.
   const [assistantOpen, setAssistantOpen] = useState(false)
   const [assistantMessages, setAssistantMessages] = useState<AssistantMessage[]>([])
@@ -185,47 +259,68 @@ export function AppLayout() {
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
     cn(
-      'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
+      'flex items-center gap-3 rounded-xl py-2.5 text-sm font-medium transition-colors',
+      sidebarCollapsed ? 'justify-center px-0' : 'px-3',
       isActive
         ? 'bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300'
         : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100',
     )
 
+  /** One sidebar link; with the rail collapsed the label moves into the tooltip and the accessible name. */
+  const sidebarLink = (to: string, label: string, Icon: LucideIcon, end?: boolean) => (
+    <NavLink
+      key={to}
+      to={to}
+      end={end}
+      className={navLinkClass}
+      title={sidebarCollapsed ? label : undefined}
+      aria-label={sidebarCollapsed ? label : undefined}
+    >
+      <Icon aria-hidden className="size-5" />
+      {!sidebarCollapsed && label}
+    </NavLink>
+  )
+
   return (
     <div className="min-h-dvh">
       {/* Desktop sidebar. start-0 / border-e follow the text direction, so in Hebrew it sits on the right. */}
-      <aside className="fixed inset-y-0 start-0 hidden w-64 flex-col overflow-y-auto border-e border-slate-200 bg-white px-4 py-6 md:flex dark:border-slate-800 dark:bg-slate-900">
-        <div className="px-2">
-          <Logo />
+      <aside
+        className={cn(
+          'fixed inset-y-0 start-0 hidden flex-col overflow-x-hidden overflow-y-auto border-e border-slate-200 bg-white py-6 transition-[width] duration-200 md:flex dark:border-slate-800 dark:bg-slate-900',
+          sidebarCollapsed ? 'w-[4.5rem] px-2' : 'w-64 px-4',
+        )}
+      >
+        <div className={cn('flex items-center', sidebarCollapsed ? 'flex-col gap-3' : 'justify-between ps-2')}>
+          <Logo compact={sidebarCollapsed} />
+          <SidebarToggle collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
         </div>
 
         <div className="mt-6">
-          <RoleChip />
+          <RoleChip compact={sidebarCollapsed} />
         </div>
 
         <nav aria-label="Main" className="mt-6 flex flex-col gap-1">
-          {navItems.map(({ to, labelKey, icon: Icon, end }) => (
-            <NavLink key={to} to={to} end={end} className={navLinkClass}>
-              <Icon aria-hidden className="size-5" />
-              {t(labelKey)}
-            </NavLink>
-          ))}
-          {user?.role === 'admin' && (
-            <NavLink to="/admin" className={navLinkClass}>
-              <ShieldCheck aria-hidden className="size-5" />
-              {t('nav.admin')}
-            </NavLink>
-          )}
+          {navItems.map(({ to, labelKey, icon, end }) => sidebarLink(to, t(labelKey), icon, end))}
+          {user?.role === 'admin' && sidebarLink('/admin', t('nav.admin'), ShieldCheck)}
         </nav>
 
-        <div className="mt-auto space-y-3 pt-6">
-          <div className="flex items-center justify-between">
+        {sidebarCollapsed ? (
+          <div className="mt-auto flex flex-col items-center gap-2 pt-6">
             <ThemeToggle />
-            <LanguageToggle />
+            <LanguageToggle compact />
+            <StreakCard days={streakDays} compact />
+            <LogoutButton compact />
           </div>
-          <StreakCard days={streakDays} />
-          <AccountCard />
-        </div>
+        ) : (
+          <div className="mt-auto space-y-3 pt-6">
+            <div className="flex items-center justify-between">
+              <ThemeToggle />
+              <LanguageToggle />
+            </div>
+            <StreakCard days={streakDays} />
+            <AccountCard />
+          </div>
+        )}
       </aside>
 
       {/* Mobile top bar */}
@@ -238,8 +333,14 @@ export function AppLayout() {
         </div>
       </header>
 
-      <main className="md:ps-64">
-        <div className="mx-auto w-full max-w-5xl px-4 pt-6 pb-28 sm:px-6 md:pt-10 md:pb-16 lg:px-8">
+      {/* The page widens a step when the sidebar is collapsed, so the saved space is actually used. */}
+      <main className={cn('transition-[padding] duration-200', sidebarCollapsed ? 'md:ps-[4.5rem]' : 'md:ps-64')}>
+        <div
+          className={cn(
+            'mx-auto w-full px-4 pt-6 pb-28 sm:px-6 md:pt-10 md:pb-16 lg:px-8',
+            sidebarCollapsed ? 'max-w-6xl' : 'max-w-5xl',
+          )}
+        >
           <Outlet />
         </div>
       </main>

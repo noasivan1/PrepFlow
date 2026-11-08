@@ -9,14 +9,15 @@ import { useAuth } from '../../state/auth-context'
 import { AdminUserDetails } from './AdminUserDetails'
 import type { AdminAccount, AdminCounts, AdminUser } from './types'
 
-const COUNT_COLUMNS: Array<{ key: keyof AdminCounts; labelKey: TranslationKey }> = [
+const COUNT_COLUMNS: Array<{ key: keyof AdminCounts; labelKey: TranslationKey; hintKey?: TranslationKey }> = [
+  // Questions the user added themselves: their contribution to the bank, so it comes first.
+  { key: 'questions', labelKey: 'admin.contributed', hintKey: 'admin.contributedHint' },
   { key: 'ratings', labelKey: 'admin.ratings' },
   { key: 'attempts', labelKey: 'admin.attempts' },
   { key: 'cards', labelKey: 'admin.cards' },
   { key: 'notes', labelKey: 'admin.notes' },
   { key: 'interviews', labelKey: 'admin.interviews' },
   { key: 'targets', labelKey: 'admin.targets' },
-  { key: 'questions', labelKey: 'admin.questions' },
 ]
 
 /** Every account in one table (a row opens it), and the full data of the open one below. */
@@ -74,7 +75,11 @@ export function AdminUsersTab() {
               <th className="px-4 py-3 text-start">{t('admin.role')}</th>
               <th className="px-4 py-3 text-start">{t('admin.joined')}</th>
               {COUNT_COLUMNS.map((column) => (
-                <th key={column.key} className="px-4 py-3 text-center">
+                <th
+                  key={column.key}
+                  title={column.hintKey ? t(column.hintKey) : undefined}
+                  className={cn('px-4 py-3 text-center', column.hintKey && 'cursor-help underline decoration-dotted underline-offset-4')}
+                >
                   {t(column.labelKey)}
                 </th>
               ))}

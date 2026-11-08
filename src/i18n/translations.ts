@@ -257,6 +257,8 @@ export const en = {
 
   'nav.study': 'Study',
   'nav.admin': 'Admin',
+  'nav.collapse': 'Collapse the menu',
+  'nav.expand': 'Expand the menu',
 
   'auth.welcome': 'Welcome to PrepFlow',
   'auth.tagline': 'Your interviews, questions, notes and practice, saved to your account.',
@@ -547,6 +549,8 @@ export const en = {
   'interview.reportedHint': 'Built into the app from an interview you reported.',
   'interview.reportedNote': 'This interview was built from the questions you reported. Copy it to your interviews to edit it.',
   'admin.questions': 'Questions',
+  'admin.contributed': 'Questions contributed',
+  'admin.contributedHint': 'Questions this user added to the bank, written by hand or generated for them.',
   'answer.title': 'My answer',
   'answer.placeholder': 'Write your answer the way you would say it in the interview...',
   'answer.check': 'Check my answer',
@@ -822,6 +826,8 @@ export const he: Record<TranslationKey, string> = {
 
   'nav.study': 'לימוד',
   'nav.admin': 'ניהול',
+  'nav.collapse': 'מזעור התפריט',
+  'nav.expand': 'הרחבת התפריט',
 
   'auth.welcome': 'ברוכים הבאים ל-PrepFlow',
   'auth.tagline': 'הראיונות, השאלות, ההערות והתרגול שלכם, שמורים בחשבון.',
@@ -1111,6 +1117,8 @@ export const he: Record<TranslationKey, string> = {
   'interview.reportedHint': 'מובנה באפליקציה מראיון שדיווחתם עליו.',
   'interview.reportedNote': 'הראיון הזה נבנה מהשאלות שדיווחתם עליהן. העתיקו אותו לראיונות שלכם כדי לערוך.',
   'admin.questions': 'שאלות',
+  'admin.contributed': 'תרומת שאלות',
+  'admin.contributedHint': 'שאלות שהמשתמש הוסיף למאגר, בכתיבה ידנית או ביצירה אוטומטית.',
   'answer.title': 'התשובה שלי',
   'answer.placeholder': 'כתבו את התשובה כמו שהייתם אומרים אותה בראיון...',
   'answer.check': 'בדיקת התשובה שלי',
