@@ -1,0 +1,16 @@
+{
+  // Emits the API as JavaScript for the Vercel function (api/index.js imports it from server-dist/).
+  // Locally the server runs straight from the .ts sources. Vercel compiles TypeScript itself but
+  // leaves the .ts import paths untouched, so the function could not find its modules; this emit
+  // rewrites them to .js. Run with `npm run build:api`; server-dist/ is git-ignored.
+  "extends": "./tsconfig.server.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "rewriteRelativeImportExtensions": true,
+    "rootDir": ".",
+    "outDir": "server-dist",
+    "incremental": true,
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.vercel.tsbuildinfo"
+  },
+  "include": ["server", "src/types"]
+}

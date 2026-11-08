@@ -9,6 +9,7 @@
     "dev:web": "vite",
     "dev:api": "tsx watch server/index.ts",
     "build": "tsc -b && vite build",
+    "build:api": "tsc -p tsconfig.vercel.json",
     "start": "node server/index.ts",
     "preview": "vite preview",
     "lint": "oxlint"

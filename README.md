@@ -21,6 +21,7 @@ npm run dev       # web (http://localhost:5173) and API (http://localhost:3001) 
 npm run dev:web   # only the Vite dev server
 npm run dev:api   # only the API (tsx watch server/index.ts)
 npm run build     # type-check app + server, build the front end for production
+npm run build:api # emit the server as JavaScript into server-dist/ (Vercel runs this after build)
 npm run preview   # preview the production build
 npm run lint      # run oxlint
 ```
@@ -49,7 +50,8 @@ The app is one Express server plus a built front end, and the database is SQLite
 
 ### Vercel + Turso (free tiers, recommended)
 
-Vercel runs the API as a serverless function (`api/index.ts` hands it the same Express app) and
+Vercel runs the API as a serverless function (`api/index.js` hands it the same Express app,
+emitted as JavaScript into `server-dist/` by `npm run build:api` during the Vercel build) and
 serves `dist/` as static files (`vercel.json`). Serverless functions have no disk, so the
 database lives in **Turso** (hosted libSQL); locally the very same client reads the SQLite file.
 
@@ -251,10 +253,10 @@ with an error `code` the UI translates.
 
 ```
 api/
-  index.ts      Vercel entry point: exports the Express app as a serverless function
+  index.js      Vercel entry point: exports the Express app (from server-dist/, see build:api) as a serverless function
 server/
   index.ts      long-lived entry: loads .env, waits for the schema, listens
-  app.ts        the Express app (API router, static front end, errors), shared with api/index.ts
+  app.ts        the Express app (API router, static front end, errors), shared with api/index.js
   db.ts         libSQL client (local file or Turso), schema, small async query helpers
   auth.ts       password hashing, sessions, requireUser / requireAdmin middleware
   routes.ts     every endpoint with input validation

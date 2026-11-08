@@ -34,3 +34,6 @@ server/data/
 !.env.example
 
 .vercel
+
+# JavaScript emitted from server/ for the Vercel function (npm run build:api)
+server-dist
