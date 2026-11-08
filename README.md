@@ -93,7 +93,11 @@ per-user documents are JSON, so new fields are additive. Back up by copying `pre
   `PREPFLOW_DB`); the folder is git-ignored, delete the file to start clean. When `TURSO_DATABASE_URL`
   is set, the same code talks to Turso instead.
 - The **first account registered becomes `admin`**; every later account is a regular `user`.
-  Admins get an `/admin` page listing every account and what it has saved.
+  Admins get an `/admin` area with three views: every account with everything it saved (ratings,
+  notes, cards, interviews, checked answers) and management actions (make or remove an admin, reset a
+  password, delete an account), every interview anyone logged with company and role filters, and
+  usage statistics (totals, the last 7 days, the hardest and most practised questions). An admin
+  cannot change their own role or delete their own account, and the last admin cannot be demoted.
 - Sessions are a random token in the httpOnly cookie `prepflow_session`, valid for 30 days,
   stored in the `sessions` table. Passwords are hashed with scrypt and a random salt.
 - Everything a user does is stored under their user id only. One account never sees another's data.
@@ -150,7 +154,7 @@ copy is editable). Your own questions carry `custom: true`, show a
    plan for flagged questions.
 7. `/study` – flashcards (what you got wrong, what to remember, how to approach), created from
    flagged questions or by hand, with a flip review.
-8. `/admin` – admins only.
+8. `/admin` – admins only: users, all interviews, statistics.
 
 ## How practice adapts
 
@@ -251,7 +255,7 @@ All routes live under `/api` and speak JSON.
 | Your questions | `POST /me/questions`, `PUT /me/questions/:id`, `DELETE /me/questions/:id` (also unlinks it from your interviews) |
 | AI helper | `POST /me/ai/questions` (503 `ai_not_configured` without a key) |
 | Answer checking | `POST /me/ai/evaluate-answer` (201 with the saved attempt; 503 not configured, 502 failed, 429 rate-limited), `GET /me/attempts/:questionId` |
-| Admin | `GET /admin/users`, `GET /admin/users/:id` |
+| Admin | `GET /admin/users`, `GET /admin/users/:id`, `PUT /admin/users/:id/role`, `POST /admin/users/:id/password`, `DELETE /admin/users/:id`, `GET /admin/interviews`, `GET /admin/stats` |
 
 Unauthenticated requests get `401`, non-admins on admin routes get `403`, bad input `400`
 with an error `code` the UI translates.

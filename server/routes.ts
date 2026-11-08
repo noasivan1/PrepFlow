@@ -41,7 +41,7 @@ import {
   verifyPassword,
   type UserRow,
 } from './auth.ts'
-import { all, get, nowIso, parseDocument, run } from './db.ts'
+import { all, db, get, nowIso, parseDocument, run } from './db.ts'
 
 export const router = Router()
 
@@ -682,6 +682,7 @@ type AdminRow = UserRow & {
   targets: number
   interviews: number
   questions: number
+  attempts: number
 }
 
 router.get('/admin/users', requireAdmin, async (_req, res) => {
@@ -692,7 +693,8 @@ router.get('/admin/users', requireAdmin, async (_req, res) => {
             (SELECT COUNT(*) FROM cards c WHERE c.user_id = u.id)      AS cards,
             (SELECT COUNT(*) FROM targets t WHERE t.user_id = u.id)    AS targets,
             (SELECT COUNT(*) FROM interviews i WHERE i.user_id = u.id) AS interviews,
-            (SELECT COUNT(*) FROM questions q WHERE q.user_id = u.id)  AS questions
+            (SELECT COUNT(*) FROM questions q WHERE q.user_id = u.id)  AS questions,
+            (SELECT COUNT(*) FROM answer_attempts a WHERE a.user_id = u.id) AS attempts
      FROM users u ORDER BY u.created_at`,
   )
   res.json({
@@ -705,6 +707,7 @@ router.get('/admin/users', requireAdmin, async (_req, res) => {
         targets: row.targets,
         interviews: row.interviews,
         questions: row.questions,
+        attempts: row.attempts,
       },
     })),
   })
@@ -713,5 +716,149 @@ router.get('/admin/users', requireAdmin, async (_req, res) => {
 router.get('/admin/users/:id', requireAdmin, async (req, res) => {
   const row = await get<UserRow>('SELECT * FROM users WHERE id = ?', [String(req.params.id)])
   if (!row) return notFound(res)
-  res.json({ user: toPublicUser(row), ...(await loadAccount(row.id)) })
+  const attempts = await all<AttemptRow>(
+    'SELECT id, question_id, answer, score, verdict, feedback, created_at FROM answer_attempts WHERE user_id = ? ORDER BY created_at DESC LIMIT 50',
+    [row.id],
+  )
+  res.json({ user: toPublicUser(row), ...(await loadAccount(row.id)), attempts: attempts.map(toAttempt) })
+})
+
+router.get('/admin/interviews', requireAdmin, async (_req, res) => {
+  const rows = await all<DocumentRow & { user_id: string; name: string; email: string }>(
+    `SELECT i.id, i.data, i.user_id, u.name, u.email
+     FROM interviews i JOIN users u ON u.id = i.user_id
+     ORDER BY i.created_at DESC`,
+  )
+  res.json({
+    interviews: rows.map((row) => ({
+      ...parseDocument<Interview>(row),
+      user: { id: row.user_id, name: row.name, email: row.email },
+    })),
+  })
+})
+
+const USER_ROLES = ['user', 'admin'] as const
+
+router.put('/admin/users/:id/role', requireAdmin, async (req, res) => {
+  const id = String(req.params.id)
+  const role = oneOf(body(req).role, USER_ROLES)
+  if (!role) return bad(res, 'invalid_role')
+  const target = await get<UserRow>('SELECT * FROM users WHERE id = ?', [id])
+  if (!target) return notFound(res)
+  if (target.role === 'admin' && role === 'user') {
+    // Nobody locks themselves out, and the site always keeps at least one admin.
+    if (target.id === currentUser(res).id) return bad(res, 'cannot_change_own_role')
+    const admins = (await get<{ n: number }>("SELECT COUNT(*) AS n FROM users WHERE role = 'admin'"))?.n ?? 0
+    if (Number(admins) <= 1) return bad(res, 'last_admin')
+  }
+  await run('UPDATE users SET role = ? WHERE id = ?', [role, id])
+  res.json({ user: toPublicUser({ ...target, role }) })
+})
+
+router.post('/admin/users/:id/password', requireAdmin, async (req, res) => {
+  const id = String(req.params.id)
+  const { password } = body(req)
+  if (typeof password !== 'string' || password.length < 8) return bad(res, 'weak_password')
+  const target = await get<UserRow>('SELECT * FROM users WHERE id = ?', [id])
+  if (!target) return notFound(res)
+  await run('UPDATE users SET password_hash = ? WHERE id = ?', [hashPassword(password), id])
+  // Every signed-in device of that account has to sign in again with the new password. When an
+  // admin resets their own password, the session making this request stays valid.
+  await run('DELETE FROM sessions WHERE user_id = ? AND token <> ?', [id, readCookie(req, SESSION_COOKIE) ?? ''])
+  res.status(204).end()
+})
+
+const PER_USER_TABLES = ['sessions', 'settings', 'notes', 'ratings', 'cards', 'targets', 'interviews', 'questions', 'answer_attempts'] as const
+
+router.delete('/admin/users/:id', requireAdmin, async (req, res) => {
+  const id = String(req.params.id)
+  if (id === currentUser(res).id) return bad(res, 'cannot_delete_self')
+  const target = await get<UserRow>('SELECT * FROM users WHERE id = ?', [id])
+  if (!target) return notFound(res)
+  // Explicit and in one transaction: the ON DELETE CASCADE rules need foreign_keys = ON, which a
+  // hosted connection does not necessarily keep between requests.
+  await db.batch(
+    [
+      ...PER_USER_TABLES.map((table) => ({ sql: `DELETE FROM ${table} WHERE user_id = ?`, args: [id] })),
+      { sql: 'DELETE FROM users WHERE id = ?', args: [id] },
+    ],
+    'write',
+  )
+  res.status(204).end()
+})
+
+interface QuestionStatRow {
+  question_id: string
+  total: number
+  struggled: number
+  users: number
+}
+
+interface ScoreStatRow {
+  question_id: string
+  attempts: number
+  avg_score: number
+}
+
+router.get('/admin/stats', requireAdmin, async (_req, res) => {
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+  const [totals, week, average, hardest, lowest, popular] = await Promise.all([
+    get<Record<string, number>>(
+      `SELECT (SELECT COUNT(*) FROM users)           AS users,
+              (SELECT COUNT(*) FROM interviews)      AS interviews,
+              (SELECT COUNT(*) FROM ratings)         AS ratings,
+              (SELECT COUNT(*) FROM answer_attempts) AS attempts,
+              (SELECT COUNT(*) FROM cards)           AS cards,
+              (SELECT COUNT(*) FROM notes)           AS notes`,
+    ),
+    get<Record<string, number>>(
+      `SELECT (SELECT COUNT(DISTINCT user_id) FROM ratings WHERE at > ?)       AS activeUsers,
+              (SELECT COUNT(*) FROM ratings WHERE at > ?)                      AS ratings,
+              (SELECT COUNT(*) FROM answer_attempts WHERE created_at > ?)      AS attempts`,
+      [weekAgo, weekAgo, weekAgo],
+    ),
+    get<{ avg: number | null }>('SELECT AVG(score) AS avg FROM answer_attempts'),
+    // "Hard" = the share of again/hard ratings across everyone, for questions rated at least twice.
+    all<QuestionStatRow>(
+      `SELECT question_id,
+              COUNT(*) AS total,
+              SUM(CASE WHEN rating IN ('again', 'hard') THEN 1 ELSE 0 END) AS struggled,
+              COUNT(DISTINCT user_id) AS users,
+              SUM(CASE WHEN rating IN ('again', 'hard') THEN 1.0 ELSE 0.0 END) / COUNT(*) AS struggle_rate
+       FROM ratings GROUP BY question_id HAVING COUNT(*) >= 2
+       ORDER BY struggle_rate DESC, total DESC LIMIT 10`,
+    ),
+    all<ScoreStatRow>(
+      `SELECT question_id, COUNT(*) AS attempts, AVG(score) AS avg_score
+       FROM answer_attempts GROUP BY question_id HAVING COUNT(*) >= 2
+       ORDER BY avg_score ASC LIMIT 10`,
+    ),
+    all<QuestionStatRow>(
+      `SELECT question_id,
+              COUNT(*) AS total,
+              SUM(CASE WHEN rating IN ('again', 'hard') THEN 1 ELSE 0 END) AS struggled,
+              COUNT(DISTINCT user_id) AS users
+       FROM ratings GROUP BY question_id ORDER BY total DESC LIMIT 10`,
+    ),
+  ])
+  const numbers = (row: Record<string, number> | undefined): Record<string, number> =>
+    Object.fromEntries(Object.entries(row ?? {}).map(([key, value]) => [key, Number(value ?? 0)]))
+  const ratingStat = (row: QuestionStatRow) => ({
+    questionId: row.question_id,
+    ratings: Number(row.total),
+    struggled: Number(row.struggled),
+    users: Number(row.users),
+  })
+  res.json({
+    totals: numbers(totals),
+    lastWeek: numbers(week),
+    averageScore: average?.avg === null || average?.avg === undefined ? null : Math.round(Number(average.avg)),
+    hardestQuestions: hardest.filter((row) => Number(row.struggled) > 0).map(ratingStat),
+    lowestScores: lowest.map((row) => ({
+      questionId: row.question_id,
+      attempts: Number(row.attempts),
+      averageScore: Math.round(Number(row.avg_score)),
+    })),
+    mostPractised: popular.map(ratingStat),
+  })
 })

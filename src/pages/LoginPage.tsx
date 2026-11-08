@@ -4,6 +4,7 @@ import { Languages, Moon, Sun, Zap } from 'lucide-react'
 import { ApiError } from '../api/client'
 import { Button } from '../components/ui/Button'
 import { Field, Input } from '../components/ui/Field'
+import { PasswordInput } from '../components/ui/PasswordInput'
 import type { TranslationKey } from '../i18n/translations'
 import { useTranslation } from '../i18n/useTranslation'
 import { useAuth } from '../state/auth-context'
@@ -113,13 +114,11 @@ export function LoginPage() {
             />
           </Field>
           <Field label={t('auth.password')} htmlFor="password" hint={mode === 'register' ? t('auth.passwordHint') : undefined}>
-            <Input
+            <PasswordInput
               id="password"
-              type="password"
               required
               minLength={mode === 'register' ? 8 : undefined}
               autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-              dir="ltr"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
             />
