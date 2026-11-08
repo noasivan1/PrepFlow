@@ -12,7 +12,8 @@
     "build:api": "tsc -p tsconfig.vercel.json",
     "start": "node server/index.ts",
     "preview": "vite preview",
-    "lint": "oxlint"
+    "lint": "oxlint",
+    "migrate:turso": "node scripts/migrate-local-to-turso.mjs"
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",

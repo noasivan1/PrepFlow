@@ -64,6 +64,13 @@ database lives in **Turso** (hosted libSQL); locally the very same client reads 
 4. Open the `https://...vercel.app` address, register (the first account is the admin) and add
    it to the phone's home screen. Every later `git push` to `main` redeploys.
 
+Used the app locally before going online? The hosted database starts empty. Register on the site,
+put the Turso URL and token into `.env.turso.local` (git-ignored, see the header of
+`scripts/migrate-local-to-turso.mjs`) and run `npm run migrate:turso -- --dry-run`, then without
+`--dry-run`: it copies your ratings, notes, cards, targets, interviews, own questions and answer
+attempts from `server/data/prepflow.db` to the matching hosted account. Accounts and passwords
+are not copied; re-running is safe.
+
 Limits that matter: the Hobby plan is for personal, non-commercial use; functions run up to 60 s
 (set in `vercel.json`), enough for the AI helper. The first request after a quiet period takes
 about a second (cold start).
