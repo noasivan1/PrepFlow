@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { ArrowLeft, BookMarked, CalendarDays, FileQuestion, Pencil, Repeat, Trash2 } from 'lucide-react'
-import { AnswerText } from '../components/AnswerText'
-import { CodeSolutions } from '../components/CodeSolutions'
 import { CompanyAvatar } from '../components/CompanyAvatar'
 import { FlashcardModal } from '../components/FlashcardModal'
 import { LastRatingBadge } from '../components/LastRatingBadge'
 import { NotesEditor } from '../components/NotesEditor'
 import { ProblemStatement } from '../components/ProblemStatement'
+import { QuestionGuide } from '../components/QuestionGuide'
+import { QuestionTypeHeading } from '../components/QuestionTypeHeading'
 import { ConfidenceValue } from '../components/QuestionCard'
 import { QuestionFormModal } from '../components/QuestionForm'
 import { Badge } from '../components/ui/Badge'
@@ -114,9 +114,10 @@ export function QuestionDetailsPage() {
           </span>
         </div>
 
+        <QuestionTypeHeading type={question.type} className="mt-5" />
         <h1
           dir={textDirection(question.custom, language)}
-          className="mt-5 text-2xl leading-tight font-semibold tracking-tight text-slate-900 sm:text-3xl rtl:text-right dark:text-slate-100"
+          className="mt-2 text-2xl leading-tight font-semibold tracking-tight text-slate-900 sm:text-3xl rtl:text-right dark:text-slate-100"
         >
           <BidiText text={localize(question.text)} />
         </h1>
@@ -143,44 +144,9 @@ export function QuestionDetailsPage() {
           </div>
         </dl>
 
-        <section className="mt-6">
-          <p className="text-xs font-semibold tracking-wider text-slate-500 uppercase dark:text-slate-400">
-            {t('question.answer')}
-          </p>
-          {question.answer ? (
-            <AnswerText
-              text={localize(question.answer)}
-              dir={textDirection(question.custom, language)}
-              className="mt-2 rounded-xl border border-slate-100 bg-slate-50 p-4 text-[15px] leading-relaxed text-slate-700 sm:p-5 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-300"
-            />
-          ) : (
-            <p className="mt-2 rounded-xl border border-slate-100 bg-slate-50 p-4 text-[15px] text-slate-500 sm:p-5 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-400">
-              {t('question.noAnswer')}
-            </p>
-          )}
-        </section>
-
-        {question.codeSolutions && question.codeSolutions.length > 0 && (
-          <section className="mt-6">
-            <p className="text-xs font-semibold tracking-wider text-slate-500 uppercase dark:text-slate-400">
-              {t('question.solutions')}
-            </p>
-            <div className="mt-2">
-              <CodeSolutions snippets={question.codeSolutions} preferred={preferredLanguage} />
-            </div>
-          </section>
-        )}
-
-        {question.codeExamples && question.codeExamples.length > 0 && (
-          <section className="mt-6">
-            <p className="text-xs font-semibold tracking-wider text-slate-500 uppercase dark:text-slate-400">
-              {t('question.examples')}
-            </p>
-            <div className="mt-2">
-              <CodeSolutions snippets={question.codeExamples} preferred={preferredLanguage} />
-            </div>
-          </section>
-        )}
+        <div className="mt-6">
+          <QuestionGuide question={question} answerLabel={t('question.answer')} preferredLanguage={preferredLanguage} />
+        </div>
 
         {/* The user's own questions can be edited and deleted. Seed questions cannot. */}
         {question.custom && (

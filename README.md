@@ -210,8 +210,24 @@ answer, **My notes** (a separate thing: reminders for later) and the self-rating
 
 Attempts are saved per user in `answer_attempts`; a question answered before shows "You answered
 this before · N attempts · best X%", the previous answers and feedback can be opened, and a new check
-shows "Previous / Current". Limits: 4000 characters per answer, 30 checks per user per hour
-(`PREPFLOW_EVAL_HOURLY_LIMIT`).
+shows "Previous / Current". Limits: 4000 characters per answer (12000 with code), 30 checks per user
+per hour (`PREPFLOW_EVAL_HOURLY_LIMIT`).
+
+### Coding questions
+
+A line above the title names the question type ("Coding question"). Coding questions get a
+collapsible "how to answer a coding question in an interview" checklist, a short **My approach** box
+and a code editor (Python, Java, C, C++, JavaScript) with program input and a **Run** button; drafts
+stay on the device per question (`prepflow.code.<questionId>`). **Check my answer** sends the approach
+and the code together. C, C++, Java and Python run through `POST /api/me/code/run`, which forwards
+to the public Compiler Explorer API (godbolt.org) so untrusted code never runs inside our function
+(30 runs per user per 5 minutes per instance, 20000 characters); JavaScript runs in the browser in a
+Web Worker that is killed after 5 seconds.
+
+Once revealed, a question shows, in order: **How to approach it** (`approach`, coding questions),
+the model answer (paragraphs and `- ` bullet lines), **What interviewers like to hear**
+(`keyPoints`), then code. Every code box can wrap long lines and zoom (one shared setting,
+`prepflow.codeView`), which matters on a phone.
 
 ## AI providers
 
@@ -260,6 +276,7 @@ All routes live under `/api` and speak JSON.
 | Your interviews | `POST /me/interviews`, `PUT /me/interviews/:id`, `DELETE /me/interviews/:id` |
 | Your questions | `POST /me/questions`, `PUT /me/questions/:id`, `DELETE /me/questions/:id` (also unlinks it from your interviews) |
 | AI helper | `POST /me/ai/questions` (503 `ai_not_configured` without a key) |
+| Code runner | `POST /me/code/run` (`{ language: c\|cpp\|java\|python, source, stdin }`; 503 `runner_unavailable`, 429 rate-limited) |
 | Answer checking | `POST /me/ai/evaluate-answer` (201 with the saved attempt; 503 not configured, 502 failed, 429 rate-limited), `GET /me/attempts/:questionId` |
 | Admin | `GET /admin/users`, `GET /admin/users/:id`, `PUT /admin/users/:id/role`, `POST /admin/users/:id/password`, `DELETE /admin/users/:id`, `GET /admin/interviews`, `GET /admin/stats` |
 

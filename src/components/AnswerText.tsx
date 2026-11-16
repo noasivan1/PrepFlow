@@ -43,15 +43,43 @@ function answerParagraphs(text: string): string[] {
   return sentences
 }
 
+type Block = { kind: 'paragraph'; text: string } | { kind: 'list'; items: string[] }
+
+/** Consecutive lines that start with "- " become one bulleted list; everything else stays a paragraph. */
+function answerBlocks(paragraphs: string[]): Block[] {
+  const blocks: Block[] = []
+  for (const paragraph of paragraphs) {
+    const item = /^[-•]\s+(.*)$/.exec(paragraph)
+    const last = blocks[blocks.length - 1]
+    if (item) {
+      if (last?.kind === 'list') last.items.push(item[1])
+      else blocks.push({ kind: 'list', items: [item[1]] })
+    } else {
+      blocks.push({ kind: 'paragraph', text: paragraph })
+    }
+  }
+  return blocks
+}
+
 export function AnswerText({ text, dir, className }: AnswerTextProps) {
-  const paragraphs = answerParagraphs(text)
+  const blocks = answerBlocks(answerParagraphs(text))
   return (
     <div dir={dir} className={cn('space-y-2', className)}>
-      {paragraphs.map((paragraph, index) => (
-        <p key={index}>
-          <BidiText text={paragraph} />
-        </p>
-      ))}
+      {blocks.map((block, index) =>
+        block.kind === 'list' ? (
+          <ul key={index} className="list-disc space-y-1 ps-5 marker:text-slate-400">
+            {block.items.map((item, itemIndex) => (
+              <li key={itemIndex}>
+                <BidiText text={item} />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p key={index}>
+            <BidiText text={block.text} />
+          </p>
+        ),
+      )}
     </div>
   )
 }

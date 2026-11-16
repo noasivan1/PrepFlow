@@ -130,6 +130,10 @@ export interface Question {
   timesAsked: number
   /** Model answer shown during practice and on the question page, in both languages. */
   answer?: LocalizedText
+  /** What interviewers like to hear: the details, edge cases and follow-ups that make an answer stand out. */
+  keyPoints?: LocalizedText[]
+  /** For coding questions: how to think about the problem, step by step, from clarifying to testing. */
+  approach?: LocalizedText[]
   /** Solutions in several languages, for coding questions. */
   codeSolutions?: CodeSnippet[]
   /** A short illustrative snippet, for open questions. Makes the concept concrete. */
@@ -409,4 +413,21 @@ export interface DashboardSummary {
   }
   needsAttention: TopicMastery[]
   frequentlyAsked: FrequentlyAskedItem[]
+}
+
+/** Languages the practice editor can run. C, C++, Java and Python run on the server; JavaScript in the browser. */
+export const EDITOR_LANGUAGES = ['python', 'java', 'c', 'cpp', 'javascript'] as const
+export type EditorLanguage = (typeof EDITOR_LANGUAGES)[number]
+
+/** Result of one "Run" in the practice editor. */
+export interface RunResult {
+  /** False when the program did not compile; `stderr` then holds the compiler's messages. */
+  compiled: boolean
+  /** Process exit code; null when the program never ran or was killed. */
+  exitCode: number | null
+  stdout: string
+  stderr: string
+  timedOut: boolean
+  /** Wall-clock time, in milliseconds. */
+  durationMs: number
 }

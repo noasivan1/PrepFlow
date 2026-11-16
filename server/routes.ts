@@ -41,6 +41,7 @@ import {
   verifyPassword,
   type UserRow,
 } from './auth.ts'
+import { RUNNABLE_LANGUAGES, RunnerUnavailableError, runCode } from './code-runner.ts'
 import { all, db, get, nowIso, parseDocument, run } from './db.ts'
 
 export const router = Router()
@@ -487,7 +488,8 @@ router.delete('/me/questions/:id', async (req, res) => {
 
 // ----- Answer attempts: the user's own answers, graded by the AI -----
 
-const MAX_ANSWER_LENGTH = 4000
+/** Room for an explanation plus a full solution in code. */
+const MAX_ANSWER_LENGTH = 12000
 /** Evaluations per user per hour; a plain count on the attempts table, no extra infrastructure. */
 const EVALUATIONS_PER_HOUR = Number(process.env.PREPFLOW_EVAL_HOURLY_LIMIT ?? 30)
 
@@ -627,6 +629,46 @@ router.get('/me/attempts/:questionId', async (req, res) => {
     [currentUser(res).id, String(req.params.questionId)],
   )
   res.json({ attempts: rows.map(toAttempt) })
+})
+
+// ----- Code runner: the practice editor's "Run" button -----
+
+const MAX_SOURCE_LENGTH = 20_000
+const MAX_STDIN_LENGTH = 5_000
+/** Runs per user in a sliding window, kept per server instance: enough to stop a stuck loop of clicks. */
+const RUNS_PER_WINDOW = 30
+const RUN_WINDOW_MS = 5 * 60_000
+const recentRuns = new Map<string, number[]>()
+
+router.post('/me/code/run', async (req, res) => {
+  const input = body(req)
+  const language = oneOf(input.language, RUNNABLE_LANGUAGES)
+  // Code keeps its own whitespace, so it is checked by hand instead of through text().
+  const source = typeof input.source === 'string' ? input.source : ''
+  const stdin = typeof input.stdin === 'string' ? input.stdin : ''
+  if (!language || !source.trim() || source.length > MAX_SOURCE_LENGTH || stdin.length > MAX_STDIN_LENGTH) {
+    return bad(res, 'invalid_code')
+  }
+
+  const userId = currentUser(res).id
+  const now = Date.now()
+  const runs = (recentRuns.get(userId) ?? []).filter((at) => now - at < RUN_WINDOW_MS)
+  if (runs.length >= RUNS_PER_WINDOW) {
+    res.status(429).json({ error: 'rate_limited' })
+    return
+  }
+  recentRuns.set(userId, [...runs, now])
+
+  try {
+    res.json(await runCode(language, source, stdin))
+  } catch (error) {
+    if (error instanceof RunnerUnavailableError) {
+      console.warn('Code runner unavailable:', error.cause)
+      res.status(503).json({ error: 'runner_unavailable' })
+      return
+    }
+    throw error
+  }
 })
 
 // ----- AI helper: new questions in the style of this interview -----

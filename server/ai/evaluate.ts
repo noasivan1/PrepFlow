@@ -29,7 +29,10 @@ const SYSTEM =
   'The reference answer is the main source of truth: grade conceptual correctness, completeness, important missing points, ' +
   'incorrect claims, clarity and relevance to the question. Do NOT require identical wording, and do NOT invent requirements ' +
   'that the reference answer does not support. For coding questions judge the approach, correctness and complexity, not formatting ' +
-  '(pseudocode or a clear description of the algorithm can be fully correct). Be specific and encouraging, like a good mentor. ' +
+  '(pseudocode or a clear description of the algorithm can be fully correct). ' +
+  'When the answer contains code, trace it on the examples and edge cases: point out real bugs, wrong complexity and unhandled inputs, ' +
+  'and credit a correct explanation of the approach. When the reference lists what interviewers expect to hear, use it to name the details ' +
+  'the candidate left out. Be specific and encouraging, like a good mentor. ' +
   'Answer with a single JSON object and nothing else.'
 
 function buildPrompt(input: EvaluateInput): string {

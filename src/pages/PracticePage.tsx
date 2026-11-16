@@ -23,15 +23,15 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { AiSuggestions } from '../components/AiSuggestions'
-import { AnswerText } from '../components/AnswerText'
 import { AnswerWorkspace } from '../components/AnswerWorkspace'
-import { CodeSolutions } from '../components/CodeSolutions'
 import { CompanyAvatar } from '../components/CompanyAvatar'
 import { FlashcardModal } from '../components/FlashcardModal'
 import { LastRatingBadge } from '../components/LastRatingBadge'
 import { NotesEditor } from '../components/NotesEditor'
 import { PageHeader } from '../components/PageHeader'
 import { ProblemStatement } from '../components/ProblemStatement'
+import { QuestionGuide } from '../components/QuestionGuide'
+import { QuestionTypeHeading } from '../components/QuestionTypeHeading'
 import { ConfidenceValue } from '../components/QuestionCard'
 import { Badge } from '../components/ui/Badge'
 import { Button, LinkButton } from '../components/ui/Button'
@@ -812,11 +812,13 @@ function PracticeSession({ planId, seed, onExit, onNewSet }: PracticeSessionProp
           </span>
         </div>
 
+        <QuestionTypeHeading type={current.type} className="mt-5" />
+
         {/* Long titles step down one size so they read as a title, not a wall of text. */}
         <h2
           dir={textDirection(current.custom, language)}
           className={cn(
-            'mt-5 leading-tight font-semibold tracking-tight text-slate-900 rtl:text-right dark:text-slate-100',
+            'mt-2 leading-tight font-semibold tracking-tight text-slate-900 rtl:text-right dark:text-slate-100',
             title.length > 80 ? 'text-xl sm:text-2xl' : 'text-2xl sm:text-3xl',
           )}
         >
@@ -838,47 +840,13 @@ function PracticeSession({ planId, seed, onExit, onNewSet }: PracticeSessionProp
           hint={isCoding ? t('practice.codingHint') : t('practice.hint')}
           roleName={roleName}
           companyName={companyName}
+          preferredLanguage={queue.preferredLanguage}
         />
 
         {isRevealed && (
           <div className="mt-6 animate-fade-in">
-            {/* 2. The recommended answer and its code. */}
-            <p className="text-xs font-semibold tracking-wider text-slate-500 uppercase dark:text-slate-400">
-              {t('answer.recommended')}
-            </p>
-            {current.answer ? (
-              <AnswerText
-                text={localize(current.answer)}
-                dir={textDirection(current.custom, language)}
-                className="mt-2 rounded-xl border border-slate-100 bg-slate-50 p-4 text-[15px] leading-relaxed text-slate-700 sm:p-5 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-300"
-              />
-            ) : (
-              <p className="mt-2 rounded-xl border border-slate-100 bg-slate-50 p-4 text-[15px] text-slate-500 sm:p-5 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-400">
-                {t('question.noAnswer')}
-              </p>
-            )}
-
-            {current.codeSolutions && current.codeSolutions.length > 0 && (
-              <div className="mt-4">
-                <p className="text-xs font-semibold tracking-wider text-slate-500 uppercase dark:text-slate-400">
-                  {t('question.solutions')}
-                </p>
-                <div className="mt-2">
-                  <CodeSolutions snippets={current.codeSolutions} preferred={queue.preferredLanguage} />
-                </div>
-              </div>
-            )}
-
-            {current.codeExamples && current.codeExamples.length > 0 && (
-              <div className="mt-4">
-                <p className="text-xs font-semibold tracking-wider text-slate-500 uppercase dark:text-slate-400">
-                  {t('question.examples')}
-                </p>
-                <div className="mt-2">
-                  <CodeSolutions snippets={current.codeExamples} preferred={queue.preferredLanguage} />
-                </div>
-              </div>
-            )}
+            {/* 2. How to approach it, the recommended answer, what interviewers want to hear, and the code. */}
+            <QuestionGuide question={current} answerLabel={t('answer.recommended')} preferredLanguage={queue.preferredLanguage} />
 
             {/* 3. Notes: reminders for later, not the answer itself. */}
             <div className="mt-6 border-t border-slate-100 pt-5 dark:border-slate-800">
