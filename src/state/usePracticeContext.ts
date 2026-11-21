@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import type { Catalog } from '../data/catalog'
-import { targetFocusTopics } from '../data/requirements'
+import { isJuniorTarget, targetFocusTopics } from '../data/requirements'
 import type { Interview, LatestRatings, PracticePreferences, Role, TargetInterview, Topic } from '../types'
 import { useCatalog } from './catalog-context'
 import { useUserData } from './user-data-context'
@@ -12,6 +12,8 @@ export interface PracticeContext {
   prefs: PracticePreferences
   /** Topics from the next interview: its languages plus what its requirements mention. */
   boostTopicIds: Topic['id'][]
+  /** The next interview is for a junior / student / entry-level position. */
+  juniorLevel: boolean
   latestRatings: LatestRatings
   interviews: Interview[]
   nextTarget: TargetInterview | null
@@ -37,6 +39,7 @@ export function usePracticeContext(): PracticeContext {
         roleId,
         prefs: practicePrefs,
         boostTopicIds: [],
+        juniorLevel: false,
         latestRatings,
         interviews,
         nextTarget: null,
@@ -54,6 +57,7 @@ export function usePracticeContext(): PracticeContext {
         companyId: useTargetCompany ? nextTarget.companyId : practicePrefs.companyId,
       },
       boostTopicIds: targetFocusTopics(nextTarget),
+      juniorLevel: isJuniorTarget(nextTarget),
       latestRatings,
       interviews,
       nextTarget,

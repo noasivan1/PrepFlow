@@ -224,8 +224,14 @@ export function AnswerWorkspace({ question, revealed, onReveal, hint, roleName, 
   // The reference includes what interviewers expect to hear, so the grader can point out missing details.
   const reference = (): string => {
     const base = question.answer ? localize(question.answer) : ''
+    const parts = [base]
+    if (question.example) parts.push(`Example:\n${localize(question.example)}`)
     const points = (question.keyPoints ?? []).map((point) => `- ${localize(point)}`)
-    return points.length ? `${base}\n\nWhat interviewers expect to hear:\n${points.join('\n')}` : base
+    if (points.length) parts.push(`What interviewers expect to hear:\n${points.join('\n')}`)
+    // Extras are optional depth: the grader may credit them but should not require them.
+    const extras = (question.extras ?? []).map((point) => `- ${localize(point)}`)
+    if (extras.length) parts.push(`Optional extra depth (do not penalise if missing):\n${extras.join('\n')}`)
+    return parts.filter(Boolean).join('\n\n')
   }
 
   const check = async () => {

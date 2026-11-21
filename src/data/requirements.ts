@@ -13,14 +13,24 @@ export interface RequirementsAnalysis {
   topicIds: Topic['id'][]
   /** Languages named in the posting. */
   languages: LanguageTopicId[]
+  /** The posting asks for a junior, student or entry-level candidate. */
+  junior: boolean
 }
+
+/** Words that mark a junior / student / entry-level posting, in both languages. */
+const JUNIOR_HINTS = /\b(junior|entry[\s-]level|graduate|new grad|student|intern(ship)?)\b|ג['׳]?וניור|סטודנט|בוגר(ים|ות)? טרי|ללא ניסיון|התמחות/i
 
 export function analyseRequirements(text: string): RequirementsAnalysis {
   const topicIds = matchTopics(text)
   const languages = topicIds.filter((id): id is LanguageTopicId =>
     (LANGUAGE_TOPIC_IDS as readonly string[]).includes(id),
   )
-  return { topicIds, languages }
+  return { topicIds, languages, junior: JUNIOR_HINTS.test(text) }
+}
+
+/** True when the target interview is for a junior / student / entry-level position. */
+export function isJuniorTarget(target: TargetInterview): boolean {
+  return target.roleId === 'student' || JUNIOR_HINTS.test(`${target.position}\n${target.requirements}`)
 }
 
 /** Everything a target interview tells us to emphasise: its languages plus the topics in its requirements. */

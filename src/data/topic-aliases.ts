@@ -15,13 +15,14 @@ export const TOPIC_ALIASES: Record<Topic['id'], string[]> = {
   oop: ['oop', 'object oriented', 'object-oriented', 'design patterns', 'מונחה עצמים', 'מונחה', 'תבניות עיצוב'],
   os: ['operating system', 'operating systems', 'os', 'rtos', 'freertos', 'threads', 'multithreading', 'concurrency', 'מערכות הפעלה', 'מערכת הפעלה', 'מקביליות'],
   hardware: ['hardware', 'firmware', 'embedded', 'microcontroller', 'bits', 'bit manipulation', 'drivers', 'arm', 'fpga', 'חומרה', 'ביטים', 'אמבדד', 'קושחה', 'בקרים'],
-  linux: ['linux', 'bash', 'shell', 'docker', 'kubernetes', 'containers', 'ci/cd', 'לינוקס', 'קונטיינרים'],
+  linux: ['linux', 'bash', 'shell', 'terminal', 'docker', 'kubernetes', 'containers', 'ci/cd', 'jenkins', 'continuous integration', 'לינוקס', 'קונטיינרים'],
   networking: ['networking', 'network', 'tcp', 'udp', 'tcp/ip', 'dns', 'osi', 'routing', 'רשתות', 'רשת', 'תקשורת'],
   security: ['security', 'encryption', 'cyber', 'penetration', 'owasp', 'אבטחה', 'אבטחת מידע', 'הצפנה', 'סייבר'],
   sql: ['sql', 'database', 'databases', 'postgres', 'postgresql', 'mysql', 'mongodb', 'nosql', 'מסד נתונים', 'מסדי נתונים', 'שאילתות'],
   rest: ['rest', 'rest api', 'api', 'apis', 'http', 'microservices', 'graphql'],
   algorithms: ['algorithms', 'algorithm', 'data structures', 'leetcode', 'complexity', 'אלגוריתמים', 'אלגוריתם', 'מבני נתונים', 'ליטקוד'],
-  'system-design': ['system design', 'architecture', 'scalability', 'distributed', 'תכנון מערכות', 'ארכיטקטורה'],
+  // Not "architecture": postings say "work with architecture teams" far more often than they ask for system design.
+  'system-design': ['system design', 'scalability', 'scalable systems', 'distributed systems', 'high level design', 'תכנון מערכות', 'תכן מערכות'],
 }
 
 function normalise(text: string): string {

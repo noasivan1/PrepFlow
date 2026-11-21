@@ -13,7 +13,8 @@ interface AnswerTextProps {
 /** Abbreviations after which a period does not end a sentence. */
 const ABBREVIATION = /(?:e\.g|i\.e|vs|etc|approx|cf)\.$/i
 const SHORT = 30
-const LONG_ANSWER = 240
+// Short model answers stay one paragraph; only a long unbroken text (e.g. typed by the user) is split.
+const LONG_ANSWER = 700
 
 /**
  * Splits an answer into readable paragraphs. Explicit line breaks win; a long

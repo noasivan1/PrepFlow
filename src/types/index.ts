@@ -132,6 +132,10 @@ export interface Question {
   answer?: LocalizedText
   /** What interviewers like to hear: the details, edge cases and follow-ups that make an answer stand out. */
   keyPoints?: LocalizedText[]
+  /** One short concrete example that makes the answer tangible. */
+  example?: LocalizedText
+  /** Optional extra depth, shown apart from the answer so the answer itself stays short. */
+  extras?: LocalizedText[]
   /** For coding questions: how to think about the problem, step by step, from clarifying to testing. */
   approach?: LocalizedText[]
   /** Solutions in several languages, for coding questions. */

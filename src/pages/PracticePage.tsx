@@ -151,6 +151,7 @@ function buildFromContext(context: PracticeContext, planId: PracticePlanId, seed
     interviews: context.interviews,
     latestRatings: context.latestRatings,
     boostTopicIds: context.boostTopicIds,
+    juniorLevel: context.juniorLevel,
   })
 }
 
@@ -566,6 +567,7 @@ function PracticePicker({ onPick }: { onPick: (planId: PracticePlanId, seed: num
         interviews: context.interviews,
         latestRatings: context.latestRatings,
         boostTopicIds: context.boostTopicIds,
+        juniorLevel: context.juniorLevel,
       }),
     [context],
   )

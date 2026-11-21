@@ -225,9 +225,25 @@ to the public Compiler Explorer API (godbolt.org) so untrusted code never runs i
 Web Worker that is killed after 5 seconds.
 
 Once revealed, a question shows, in order: **How to approach it** (`approach`, coding questions),
-the model answer (paragraphs and `- ` bullet lines), **What interviewers like to hear**
-(`keyPoints`), then code. Every code box can wrap long lines and zoom (one shared setting,
-`prepflow.codeView`), which matters on a phone.
+the answer to say out loud (one or two short paragraphs) with an **Example** (`example`) under it,
+**What interviewers like to hear** (`keyPoints`, 3-4 short items), **Extra depth, if there is time**
+(`extras`, starred, in its own box), then code. Every code box can wrap long lines and zoom (one
+shared setting, `prepflow.codeView`), which matters on a phone.
+
+### Profile
+
+`/profile` (the avatar in the phone's top bar, "Profile" in the desktop sidebar) shows the account
+and its activity: questions practised, how many were known vs. not, the streak and best streak, the
+last 7 days as bars, AI-check average, and counts of cards, notes and logged interviews. It also edits
+the display name (the dashboard greets you by it), changes the password (the current one is required,
+and every other device is signed out), signs out other devices, and switches language and theme.
+There is no "forgot password" email yet: that needs an email service.
+
+### Question matching
+
+Topic bonuses (posting, languages, role and company focus) are capped together, a question not tagged
+for the chosen role loses points, and a junior / student / entry-level posting pushes hard questions
+back. "Architecture" in a posting no longer counts as system design.
 
 ## AI providers
 
@@ -276,6 +292,7 @@ All routes live under `/api` and speak JSON.
 | Your interviews | `POST /me/interviews`, `PUT /me/interviews/:id`, `DELETE /me/interviews/:id` |
 | Your questions | `POST /me/questions`, `PUT /me/questions/:id`, `DELETE /me/questions/:id` (also unlinks it from your interviews) |
 | AI helper | `POST /me/ai/questions` (503 `ai_not_configured` without a key) |
+| Profile | `GET /me/account` (user + active sign-ins), `PUT /me/profile` (`{ name }`), `POST /me/password` (`{ currentPassword, newPassword }`; 403 `wrong_password`), `POST /me/sessions/sign-out-others` |
 | Code runner | `POST /me/code/run` (`{ language: c\|cpp\|java\|python, source, stdin }`; 503 `runner_unavailable`, 429 rate-limited) |
 | Answer checking | `POST /me/ai/evaluate-answer` (201 with the saved attempt; 503 not configured, 502 failed, 429 rate-limited), `GET /me/attempts/:questionId` |
 | Admin | `GET /admin/users`, `GET /admin/users/:id`, `PUT /admin/users/:id/role`, `POST /admin/users/:id/password`, `DELETE /admin/users/:id`, `GET /admin/interviews`, `GET /admin/stats` |

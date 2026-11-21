@@ -14,6 +14,7 @@ import { InterviewsPage } from './pages/InterviewsPage'
 import { LoginPage } from './pages/LoginPage'
 import { OnboardingPage } from './pages/OnboardingPage'
 import { PracticePage } from './pages/PracticePage'
+import { ProfilePage } from './pages/ProfilePage'
 import { QuestionBankPage } from './pages/QuestionBankPage'
 import { QuestionDetailsPage } from './pages/QuestionDetailsPage'
 import { RoleSelectPage } from './pages/RoleSelectPage'
@@ -78,6 +79,7 @@ export default function App() {
                   <Route path="questions/:id" element={<QuestionDetailsPage />} />
                   <Route path="practice" element={<PracticePage />} />
                   <Route path="study" element={<StudyPage />} />
+                  <Route path="profile" element={<ProfilePage />} />
                   <Route path="admin" element={<AdminPage />} />
                   <Route path="*" element={<NotFoundPage />} />
                 </Route>

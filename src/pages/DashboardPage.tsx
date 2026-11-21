@@ -23,7 +23,8 @@ import { getCompany, getQuestionsByIds, getRole, getTopicMap } from '../data/que
 import { daysUntil } from '../data/requirements'
 import { computeDashboardSummary } from '../data/summary'
 import { useTranslation } from '../i18n/useTranslation'
-import { cn, describeDays, formatDate, getGreetingKey, textDirection } from '../lib/utils'
+import { cn, describeDays, firstName, formatDate, getGreetingKey, textDirection } from '../lib/utils'
+import { useAuth } from '../state/auth-context'
 import { usePracticeContext } from '../state/usePracticeContext'
 import { useUserData } from '../state/user-data-context'
 import { BidiText } from '../components/BidiText'
@@ -74,6 +75,8 @@ const inlineLink =
 export function DashboardPage() {
   const { t, localize, plural, language } = useTranslation()
   const { roleId, flaggedIds, ratings, pastTargets } = useUserData()
+  const { user } = useAuth()
+  const name = user ? firstName(user.name, user.email) : ''
   const context = usePracticeContext()
   const summary = useMemo(
     () =>
@@ -103,6 +106,7 @@ export function DashboardPage() {
         interviews: context.interviews,
         latestRatings: context.latestRatings,
         boostTopicIds: context.boostTopicIds,
+        juniorLevel: context.juniorLevel,
       }),
     [context],
   )
@@ -118,7 +122,7 @@ export function DashboardPage() {
       <section className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl dark:text-slate-100">
-            {t(getGreetingKey())} 👋
+            {name ? t('dashboard.greetingName', { greeting: t(getGreetingKey()), name }) : t(getGreetingKey())} 👋
           </h1>
           <p className="mt-1 text-slate-500 dark:text-slate-400">{t('dashboard.ready')}</p>
           <Link

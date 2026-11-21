@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   Sun,
   Target,
+  UserRound,
   X,
   Zap,
   type LucideIcon,
@@ -27,7 +28,7 @@ import { getRole } from '../data/queries'
 import { computeStreak } from '../data/summary'
 import type { TranslationKey } from '../i18n/translations'
 import { useTranslation } from '../i18n/useTranslation'
-import { cn } from '../lib/utils'
+import { cn, firstName } from '../lib/utils'
 import { useAuth } from '../state/auth-context'
 import { useCatalog } from '../state/catalog-context'
 import { useSettings } from '../state/settings-context'
@@ -51,6 +52,8 @@ const navItems: NavItem[] = [
   { to: '/questions', labelKey: 'nav.questions', shortLabelKey: 'nav.questionsShort', icon: BookOpen, mobile: true },
   { to: '/practice', labelKey: 'nav.practice', icon: Brain, mobile: true },
   { to: '/study', labelKey: 'nav.study', icon: BookMarked, mobile: true },
+  // On a phone the profile is the avatar in the top bar (the bottom bar has five slots).
+  { to: '/profile', labelKey: 'nav.profile', icon: UserRound, mobile: false },
 ]
 
 /** The desktop sidebar remembers whether it was collapsed to an icon rail, per device. */
@@ -208,17 +211,35 @@ function StreakCard({ days, compact = false }: { days: number; compact?: boolean
   )
 }
 
-/** Who is signed in, with sign-out. */
+/** The signed-in user's initial in a round badge; opens the profile. */
+function ProfileAvatar() {
+  const { user } = useAuth()
+  const { t } = useTranslation()
+  if (!user) return null
+  const initial = firstName(user.name, user.email).charAt(0).toUpperCase() || '?'
+  return (
+    <Link
+      to="/profile"
+      aria-label={t('nav.profile')}
+      title={t('nav.profile')}
+      className="ms-1 flex size-8 items-center justify-center rounded-full bg-brand-600 text-sm font-semibold text-white shadow-sm shadow-brand-600/30 transition-colors hover:bg-brand-700"
+    >
+      {initial}
+    </Link>
+  )
+}
+
+/** Who is signed in (links to the profile), with sign-out. */
 function AccountCard() {
   const { user } = useAuth()
   const { t } = useTranslation()
   if (!user) return null
   return (
     <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 p-3 dark:border-slate-800">
-      <div className="min-w-0">
+      <Link to="/profile" className="min-w-0 rounded-lg hover:opacity-80">
         <p className="text-[11px] font-medium tracking-wider text-slate-500 uppercase dark:text-slate-400">{t('auth.signedInAs')}</p>
         <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{user.name}</p>
-      </div>
+      </Link>
       <LogoutButton compact />
     </div>
   )
@@ -329,7 +350,7 @@ export function AppLayout() {
         <div className="flex items-center gap-1">
           <ThemeToggle />
           <LanguageToggle />
-          <LogoutButton compact />
+          <ProfileAvatar />
         </div>
       </header>
 

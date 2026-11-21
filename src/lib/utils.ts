@@ -84,3 +84,15 @@ export function textDirection(userTyped: boolean | undefined, language: Language
   if (userTyped) return 'auto'
   return language === 'he' ? 'rtl' : 'ltr'
 }
+
+/**
+ * The name to greet someone by: the first word of the name they gave, or, when there is none,
+ * the start of the email address without digits and separators ("noa.levi99@..." -> "Noa").
+ */
+export function firstName(name: string | undefined, email = ''): string {
+  const fromName = (name ?? '').trim().split(' ').find(Boolean)
+  if (fromName) return fromName
+  const local = email.split('@')[0] ?? ''
+  const word = local.replace(/[0-9]+/g, '').split(/[._+-]+/).find(Boolean) ?? ''
+  return word ? word.charAt(0).toUpperCase() + word.slice(1) : ''
+}

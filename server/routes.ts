@@ -234,6 +234,47 @@ router.get('/me/data', async (_req, res) => {
   res.json(await loadAccount(currentUser(res).id))
 })
 
+// ---------- Profile and account security ----------
+
+/** Name, and how many devices are signed in to this account right now. */
+router.get('/me/account', async (_req, res) => {
+  const user = currentUser(res)
+  const sessions = await get<{ n: number }>('SELECT COUNT(*) AS n FROM sessions WHERE user_id = ? AND expires_at > ?', [user.id, nowIso()])
+  res.json({ user: toPublicUser(user), activeSessions: Number(sessions?.n ?? 0) })
+})
+
+router.put('/me/profile', async (req, res) => {
+  const name = text(body(req).name, 80)
+  if (!name) return bad(res, 'invalid_name')
+  const user = currentUser(res)
+  await run('UPDATE users SET name = ? WHERE id = ?', [name, user.id])
+  res.json({ user: toPublicUser({ ...user, name }) })
+})
+
+/**
+ * Changes the password after checking the current one. Every other device is signed out,
+ * so a password that leaked stops working everywhere; this device stays signed in.
+ */
+router.post('/me/password', async (req, res) => {
+  const { currentPassword, newPassword } = body(req)
+  const user = currentUser(res)
+  if (typeof currentPassword !== 'string' || !verifyPassword(currentPassword, user.password_hash)) {
+    res.status(403).json({ error: 'wrong_password' })
+    return
+  }
+  if (typeof newPassword !== 'string' || newPassword.length < 8 || newPassword.length > 200) return bad(res, 'weak_password')
+  await run('UPDATE users SET password_hash = ? WHERE id = ?', [hashPassword(newPassword), user.id])
+  await run('DELETE FROM sessions WHERE user_id = ? AND token != ?', [user.id, readCookie(req, SESSION_COOKIE) ?? ''])
+  res.status(204).end()
+})
+
+/** Signs out every other device (a phone left signed in, a shared computer). */
+router.post('/me/sessions/sign-out-others', async (req, res) => {
+  const user = currentUser(res)
+  await run('DELETE FROM sessions WHERE user_id = ? AND token != ?', [user.id, readCookie(req, SESSION_COOKIE) ?? ''])
+  res.status(204).end()
+})
+
 router.put('/me/settings', async (req, res) => {
   const { roleId, practicePrefs, showSamples } = body(req)
   const settings: AccountSettings = {

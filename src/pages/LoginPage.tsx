@@ -89,6 +89,13 @@ export function LoginPage() {
           <p className="mt-2 text-slate-500 dark:text-slate-400">{t('auth.tagline')}</p>
         </div>
 
+        {/* Only in "npm run dev": the local database is a different one from the live site's. */}
+        {import.meta.env.DEV && (
+          <p className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+            {t('auth.localNote')}
+          </p>
+        )}
+
         <form
           onSubmit={handleSubmit}
           className="mt-8 space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-xs dark:border-slate-800 dark:bg-slate-900"

@@ -83,6 +83,8 @@ export interface ScoringInput {
   latestRatings: LatestRatings
   /** Extra topics to favour, e.g. those found in the target interview's job requirements. */
   boostTopicIds?: Topic['id'][]
+  /** The posting is for a junior / student / entry-level position: hard questions step back. */
+  juniorLevel?: boolean
 }
 
 interface Scoring {
@@ -105,14 +107,21 @@ const RELAXED_MATCH = 2.5
 /** How many tailored questions a session pool should have before it is relaxed. */
 const MIN_POOL = 12
 
+/** Topic bonuses (requirements, languages, role and company focus) stack up to this much, no more. */
+const TOPIC_POINTS_CAP = 5
+/** A question that is not tagged for the chosen role (e.g. an IT-helpdesk question for a verification role). */
+const OFF_ROLE_PENALTY = 4
+
 /**
  * One scoring function for predictions and sessions. Points come from: what
  * the target company already asked (strongest), topics named in the job
  * requirements, the interview languages, the role's and company's focus
- * topics, the role tag, how often a question comes up, where the user is
- * weakest, and the chosen emphasis (coding vs theory).
+ * topics (together capped, so one topic named everywhere cannot carry an
+ * unrelated question), the role tag (a question written for other roles is
+ * pushed down), how often a question comes up, where the user is weakest, the
+ * seniority of the posting and the chosen emphasis (coding vs theory).
  */
-function createScoring({ roleId, prefs, interviews, latestRatings, boostTopicIds = [] }: ScoringInput): Scoring {
+function createScoring({ roleId, prefs, interviews, latestRatings, boostTopicIds = [], juniorLevel = false }: ScoringInput): Scoring {
   const role = roleId ? getRole(roleId) : undefined
   const company = prefs.companyId ? getCompany(prefs.companyId) : undefined
   const languages = new Set<string>(prefs.languages)
@@ -128,12 +137,15 @@ function createScoring({ roleId, prefs, interviews, latestRatings, boostTopicIds
   const score = (question: Question) => {
     let points = 0
     if (askedAtCompany.has(question.id)) points += 6
-    if (boosted.has(question.topicId)) points += 3
-    if (languages.has(question.topicId)) points += 2
-    if (company?.focusTopicIds.includes(question.topicId)) points += 2
-    if (role?.focusTopicIds.includes(question.topicId)) points += 2
-    if (role && question.roleIds.includes(role.id)) points += 1.5
+    let topicPoints = 0
+    if (boosted.has(question.topicId)) topicPoints += 3
+    if (languages.has(question.topicId)) topicPoints += 2
+    if (company?.focusTopicIds.includes(question.topicId)) topicPoints += 2
+    if (role?.focusTopicIds.includes(question.topicId)) topicPoints += 2
+    points += Math.min(topicPoints, TOPIC_POINTS_CAP)
+    if (role) points += question.roleIds.includes(role.id) ? 1.5 : -OFF_ROLE_PENALTY
     points += Math.min(question.timesAsked, 4) * 0.5
+    if (juniorLevel) points += question.difficulty === 'hard' ? -1.5 : question.difficulty === 'easy' ? 0.5 : 0
     const confidence = effectiveConfidence(question, latestRatings)
     points += confidence === 'low' ? 1 : confidence === 'medium' ? 0.5 : 0
     if (prefs.emphasis === 'coding') points += question.type === 'coding' ? 4 : -2
